@@ -67,10 +67,10 @@ Start with the sample configuration:
 
 ```bash
 # Download sample configuration
-curl -o screenshot_config.json https://raw.githubusercontent.com/snappium/snappium/main/samples/screenshot_config.json
+curl -o screenshot_config.json https://raw.githubusercontent.com/QotoQot/Snappium/refs/heads/main/samples/screenshot_config.json
 
 # Or create from scratch using the schema
-curl -o schema.json https://raw.githubusercontent.com/snappium/snappium/main/schema/screenshot_config.schema.json
+curl -o schema.json https://raw.githubusercontent.com/QotoQot/Snappium/refs/heads/main/schema/screenshot_config.schema.json
 ```
 
 ### 2. Validate Configuration
