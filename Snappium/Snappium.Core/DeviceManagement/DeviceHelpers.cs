@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Xml.Linq;
 
 namespace Snappium.Core.DeviceManagement;
 
@@ -159,7 +160,7 @@ public static class DeviceHelpers
     }
 
     /// <summary>
-    /// Extract the bundle ID from an iOS app path.
+    /// Extract the bundle ID from an iOS app path using proper XML parsing.
     /// </summary>
     /// <param name="appPath">Path to the .app bundle</param>
     /// <returns>Bundle identifier</returns>
@@ -173,38 +174,51 @@ public static class DeviceHelpers
             throw new InvalidOperationException($"Info.plist not found in app bundle: {appPath}");
         }
 
-        // Simple extraction - in production you might want to use a proper plist parser
-        var content = await File.ReadAllTextAsync(infoPlistPath);
-        
-        // Look for CFBundleIdentifier
-        const string bundleIdKey = "<key>CFBundleIdentifier</key>";
-        var keyIndex = content.IndexOf(bundleIdKey, StringComparison.OrdinalIgnoreCase);
-        if (keyIndex == -1)
+        try
         {
+            // Use proper XML parsing instead of brittle string manipulation
+            var content = await File.ReadAllTextAsync(infoPlistPath);
+            var doc = XDocument.Parse(content);
+            
+            // Navigate the plist structure: plist -> dict -> key/value pairs
+            var dictElement = doc.Root?.Element("dict");
+            if (dictElement == null)
+            {
+                throw new InvalidOperationException($"Invalid Info.plist structure - missing dict element: {infoPlistPath}");
+            }
+
+            // Find CFBundleIdentifier key-value pair in the dictionary
+            var keyElements = dictElement.Elements("key").ToList();
+            for (int i = 0; i < keyElements.Count; i++)
+            {
+                var keyElement = keyElements[i];
+                if (string.Equals(keyElement.Value, "CFBundleIdentifier", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Get the next sibling element which should contain the value
+                    var valueElement = keyElement.ElementsAfterSelf().FirstOrDefault();
+                    if (valueElement?.Name == "string")
+                    {
+                        var bundleId = valueElement.Value?.Trim();
+                        if (string.IsNullOrEmpty(bundleId))
+                        {
+                            throw new InvalidOperationException($"Empty CFBundleIdentifier value in Info.plist: {infoPlistPath}");
+                        }
+                        
+                        return bundleId;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"CFBundleIdentifier value is not a string in Info.plist: {infoPlistPath}");
+                    }
+                }
+            }
+
             throw new InvalidOperationException($"CFBundleIdentifier not found in Info.plist: {infoPlistPath}");
         }
-
-        // Find the next <string> tag after the key
-        var stringStart = content.IndexOf("<string>", keyIndex, StringComparison.OrdinalIgnoreCase);
-        if (stringStart == -1)
+        catch (System.Xml.XmlException ex)
         {
-            throw new InvalidOperationException($"Bundle identifier value not found in Info.plist: {infoPlistPath}");
+            throw new InvalidOperationException($"Invalid XML in Info.plist: {infoPlistPath}", ex);
         }
-
-        stringStart += "<string>".Length;
-        var stringEnd = content.IndexOf("</string>", stringStart, StringComparison.OrdinalIgnoreCase);
-        if (stringEnd == -1)
-        {
-            throw new InvalidOperationException($"Malformed bundle identifier in Info.plist: {infoPlistPath}");
-        }
-
-        var bundleId = content.Substring(stringStart, stringEnd - stringStart).Trim();
-        if (string.IsNullOrEmpty(bundleId))
-        {
-            throw new InvalidOperationException($"Empty bundle identifier in Info.plist: {infoPlistPath}");
-        }
-
-        return bundleId;
     }
 
     /// <summary>

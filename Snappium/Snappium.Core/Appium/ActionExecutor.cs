@@ -63,17 +63,7 @@ public sealed class ActionExecutor : IActionExecutor
             // Execute each action
             foreach (var action in screenshotPlan.Actions)
             {
-                // Run dismissors before each action
-                if (job.Platform == Platform.iOS && screenshotPlan.Dismissors?.Ios != null)
-                {
-                    await ExecuteDismissorsAsync(driver, screenshotPlan.Dismissors.Ios, cancellationToken);
-                }
-                else if (job.Platform == Platform.Android && screenshotPlan.Dismissors?.Android != null)
-                {
-                    await ExecuteDismissorsAsync(driver, screenshotPlan.Dismissors.Android, cancellationToken);
-                }
-
-                // Execute the action
+                // Execute the action (dismissors already ran once at the beginning)
                 var result = await ExecuteActionAsync(driver, job, deviceIdentifier, action, outputDirectory, cancellationToken);
                 if (result != null)
                 {

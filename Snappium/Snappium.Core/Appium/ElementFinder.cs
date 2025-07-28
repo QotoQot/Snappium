@@ -37,23 +37,20 @@ public sealed class ElementFinder : IElementFinder
         {
             var wait = new WebDriverWait(driver, effectiveTimeout);
             
-            // Use cancellation token in wait condition
-            var element = await Task.Run(() =>
+            // Direct WebDriverWait usage without Task.Run wrapper
+            var element = wait.Until(d =>
             {
-                return wait.Until(d =>
+                cancellationToken.ThrowIfCancellationRequested();
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        var el = d.FindElement(by);
-                        return el?.Displayed == true ? el : null;
-                    }
-                    catch (NoSuchElementException)
-                    {
-                        return null;
-                    }
-                });
-            }, cancellationToken);
+                    var el = d.FindElement(by);
+                    return el?.Displayed == true ? el : null;
+                }
+                catch (NoSuchElementException)
+                {
+                    return null;
+                }
+            });
 
             if (element == null)
             {
