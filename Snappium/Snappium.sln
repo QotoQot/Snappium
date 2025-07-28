@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snappium.Core", "Snappium.Core\Snappium.Core.csproj", "{D0876539-94CC-406D-B21F-3EE225BE42BF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snappium.Cli", "Snappium.Cli\Snappium.Cli.csproj", "{D8AA5DD0-496A-4E84-95DD-C867BA25CBE8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Snappium.Tests", "Snappium.Tests\Snappium.Tests.csproj", "{2FE187A0-E165-4401-9E96-02C5AD2859B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D0876539-94CC-406D-B21F-3EE225BE42BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0876539-94CC-406D-B21F-3EE225BE42BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0876539-94CC-406D-B21F-3EE225BE42BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0876539-94CC-406D-B21F-3EE225BE42BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8AA5DD0-496A-4E84-95DD-C867BA25CBE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8AA5DD0-496A-4E84-95DD-C867BA25CBE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8AA5DD0-496A-4E84-95DD-C867BA25CBE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8AA5DD0-496A-4E84-95DD-C867BA25CBE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FE187A0-E165-4401-9E96-02C5AD2859B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FE187A0-E165-4401-9E96-02C5AD2859B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FE187A0-E165-4401-9E96-02C5AD2859B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FE187A0-E165-4401-9E96-02C5AD2859B6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

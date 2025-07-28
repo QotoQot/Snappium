@@ -1,0 +1,145 @@
+{
+  "devices": {
+    "ios": [
+      {
+        "name": "iPhone 15",
+        "udid": null,
+        "folder": "iPhone_15_6.1",
+        "PlatformVersion": "17.5"
+      }
+    ],
+    "android": [
+      {
+        "name": "Pixel 7",
+        "avd": "Pixel_7_API_34",
+        "folder": "Phone_6.1",
+        "PlatformVersion": "14"
+      }
+    ]
+  },
+  "languages": ["en-US"],
+  "LocaleMapping": {
+    "en-US": {"ios": "en_US", "android": "en_US"}
+  },
+  "BuildConfig": {
+    "ios": {
+      "Csproj": "iOS/iOS.csproj",
+      "Tfm": "net9.0-ios",
+      "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
+    },
+    "android": {
+      "Csproj": "Droid/Droid.csproj", 
+      "Tfm": "net9.0-android",
+      "ArtifactGlob": "Droid/bin/Release/**/*.apk",
+      "Package": "com.example.app"
+    }
+  },
+  "screenshots": [
+    {
+      "name": "01_home",
+      "orientation": "portrait",
+      "actions": [
+        {
+          "wait_for": {
+            "timeout": 5000,
+            "selector": {"AccessibilityId": "main-view"}
+          }
+        },
+        {"capture": {"name": "01_home"}}
+      ],
+      "assert": {
+        "ios": {"AccessibilityId": "main-view"},
+        "android": {"AccessibilityId": "main_view"}
+      }
+    },
+    {
+      "name": "02_settings",
+      "orientation": "portrait",
+      "actions": [
+        {
+          "tap": {"AccessibilityId": "settings-button"}
+        },
+        {
+          "wait_for": {
+            "timeout": 3000,
+            "selector": {"AccessibilityId": "settings-view"}
+          }
+        },
+        {"capture": {"name": "02_settings"}}
+      ]
+    }
+  ],
+  "Timeouts": {
+    "DefaultWaitMs": 5000,
+    "ImplicitWaitMs": 2000,
+    "PageLoadTimeoutMs": 30000
+  },
+  "Ports": {
+    "BasePort": 4723,
+    "PortOffset": 10
+  },
+  "AppReset": {
+    "Policy": "on_language_change",
+    "ClearDataOnLanguageChange": true,
+    "ReinstallVsRelaunch": "relaunch"
+  },
+  "FailureArtifacts": {
+    "SavePageSource": true,
+    "SaveScreenshot": true,
+    "SaveAppiumLogs": false,
+    "SaveDeviceLogs": true,
+    "ArtifactsDir": "failure_artifacts"
+  },
+  "StatusBar": {
+    "ios": {
+      "Time": "9:41",
+      "WifiBars": 3,
+      "CellularBars": 4,
+      "BatteryState": "charged"
+    },
+    "android": {
+      "DemoMode": true,
+      "Clock": "1200",
+      "Battery": 100,
+      "Wifi": "4",
+      "Notifications": "false"
+    }
+  },
+  "Validation": {
+    "EnforceImageSize": false,
+    "ExpectedSizes": {
+      "ios": {
+        "iPhone_15_6.1": {
+          "Portrait": [393, 852],
+          "Landscape": [852, 393]
+        }
+      },
+      "android": {
+        "Phone_6.1": {
+          "Portrait": [412, 915],
+          "Landscape": [915, 412]
+        }
+      }
+    }
+  },
+  "Capabilities": {
+    "ios": {
+      "showXcodeLog": false,
+      "resetOnSessionStartOnly": true
+    },
+    "android": {
+      "autoGrantPermissions": true,
+      "noReset": false
+    }
+  },
+  "Dismissors": {
+    "ios": [
+      {"AccessibilityId": "Allow"},
+      {"AccessibilityId": "OK"}
+    ],
+    "android": [
+      {"Id": "android:id/button1"},
+      {"Id": "com.android.permissioncontroller:id/permission_allow_button"}
+    ]
+  }
+}
