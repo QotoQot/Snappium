@@ -13,8 +13,6 @@ public sealed class IosDeviceManager : IIosDeviceManager
     private readonly ICommandRunner _commandRunner;
     private readonly ILogger<IosDeviceManager> _logger;
 
-    private string? _currentDevice;
-
     public IosDeviceManager(ICommandRunner commandRunner, ILogger<IosDeviceManager> logger)
     {
         _commandRunner = commandRunner;
@@ -48,7 +46,6 @@ public sealed class IosDeviceManager : IIosDeviceManager
     public async Task BootAsync(string udidOrName, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Booting iOS simulator: {Device}", udidOrName);
-        _currentDevice = udidOrName;
 
         // First boot the simulator
         var bootResult = await _commandRunner.RunAsync(
@@ -82,20 +79,15 @@ public sealed class IosDeviceManager : IIosDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task SetLanguageAsync(string languageTag, LocaleMapping localeMapping, CancellationToken cancellationToken = default)
+    public async Task SetLanguageAsync(string deviceIdentifier, string languageTag, LocaleMapping localeMapping, CancellationToken cancellationToken = default)
     {
-        if (_currentDevice == null)
-        {
-            throw new InvalidOperationException("No device is currently active. Boot a device first.");
-        }
-
         var iosLocale = localeMapping.Ios;
         _logger.LogInformation("Setting iOS simulator language to {Language} (locale: {Locale})", languageTag, iosLocale);
 
         // Set AppleLanguages
         var languageResult = await _commandRunner.RunAsync(
             "xcrun",
-            ["simctl", "spawn", _currentDevice, "defaults", "write", "-g", "AppleLanguages", "-array", iosLocale],
+            ["simctl", "spawn", deviceIdentifier, "defaults", "write", "-g", "AppleLanguages", "-array", iosLocale],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
 
@@ -107,7 +99,7 @@ public sealed class IosDeviceManager : IIosDeviceManager
         // Set AppleLocale
         var localeResult = await _commandRunner.RunAsync(
             "xcrun",
-            ["simctl", "spawn", _currentDevice, "defaults", "write", "-g", "AppleLocale", iosLocale],
+            ["simctl", "spawn", deviceIdentifier, "defaults", "write", "-g", "AppleLocale", iosLocale],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
 
@@ -116,7 +108,7 @@ public sealed class IosDeviceManager : IIosDeviceManager
             throw new InvalidOperationException($"Failed to set AppleLocale: {localeResult.StandardError}");
         }
 
-        _logger.LogDebug("Language configuration completed for {Device}", _currentDevice);
+        _logger.LogDebug("Language configuration completed for {Device}", deviceIdentifier);
     }
 
     /// <inheritdoc />
@@ -162,19 +154,14 @@ public sealed class IosDeviceManager : IIosDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task InstallAppAsync(string appPath, CancellationToken cancellationToken = default)
+    public async Task InstallAppAsync(string deviceIdentifier, string appPath, CancellationToken cancellationToken = default)
     {
-        if (_currentDevice == null)
-        {
-            throw new InvalidOperationException("No device is currently active. Boot a device first.");
-        }
-
         DeviceHelpers.ValidateFilePath(appPath, "iOS app");
-        _logger.LogInformation("Installing iOS app {AppPath} on {Device}", appPath, _currentDevice);
+        _logger.LogInformation("Installing iOS app {AppPath} on {Device}", appPath, deviceIdentifier);
 
         var result = await _commandRunner.RunAsync(
             "xcrun",
-            ["simctl", "install", _currentDevice, appPath],
+            ["simctl", "install", deviceIdentifier, appPath],
             timeout: TimeSpan.FromMinutes(5),
             cancellationToken: cancellationToken);
 
@@ -187,19 +174,14 @@ public sealed class IosDeviceManager : IIosDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task TakeScreenshotAsync(string outputFilePath, CancellationToken cancellationToken = default)
+    public async Task TakeScreenshotAsync(string deviceIdentifier, string outputFilePath, CancellationToken cancellationToken = default)
     {
-        if (_currentDevice == null)
-        {
-            throw new InvalidOperationException("No device is currently active. Boot a device first.");
-        }
-
         DeviceHelpers.EnsureDirectoryExists(Path.GetDirectoryName(outputFilePath)!);
         _logger.LogDebug("Taking iOS screenshot: {OutputPath}", outputFilePath);
 
         var result = await _commandRunner.RunAsync(
             "xcrun",
-            ["simctl", "io", _currentDevice, "screenshot", outputFilePath],
+            ["simctl", "io", deviceIdentifier, "screenshot", outputFilePath],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
 
@@ -218,18 +200,13 @@ public sealed class IosDeviceManager : IIosDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task ResetAppDataAsync(string bundleId, CancellationToken cancellationToken = default)
+    public async Task ResetAppDataAsync(string deviceIdentifier, string bundleId, CancellationToken cancellationToken = default)
     {
-        if (_currentDevice == null)
-        {
-            throw new InvalidOperationException("No device is currently active. Boot a device first.");
-        }
-
-        _logger.LogInformation("Resetting app data for {BundleId} on {Device}", bundleId, _currentDevice);
+        _logger.LogInformation("Resetting app data for {BundleId} on {Device}", bundleId, deviceIdentifier);
 
         var result = await _commandRunner.RunAsync(
             "xcrun",
-            ["simctl", "privacy", _currentDevice, "reset", "all", bundleId],
+            ["simctl", "privacy", deviceIdentifier, "reset", "all", bundleId],
             timeout: TimeSpan.FromMinutes(2),
             cancellationToken: cancellationToken);
 

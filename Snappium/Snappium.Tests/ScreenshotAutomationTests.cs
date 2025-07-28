@@ -76,17 +76,17 @@ public class ScreenshotAutomationTests
             // Mock all methods to complete successfully
             mock.Setup(x => x.ShutdownAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.SetLanguageAsync(It.IsAny<string>(), It.IsAny<LocaleMapping>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.SetLanguageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<LocaleMapping>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             mock.Setup(x => x.BootAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.InstallAppAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.InstallAppAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
             mock.Setup(x => x.SetStatusBarAsync(It.IsAny<string>(), It.IsAny<IosStatusBar>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.ResetAppDataAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.ResetAppDataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.TakeScreenshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.TakeScreenshotAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
                 
             return mock.Object;
@@ -98,20 +98,20 @@ public class ScreenshotAutomationTests
             
             // Mock all methods to complete successfully
             mock.Setup(x => x.StartEmulatorAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync("emulator-5554");
+            mock.Setup(x => x.WaitForBootAsync(It.IsAny<string>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.WaitForBootAsync(It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.SetLanguageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<LocaleMapping>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.SetLanguageAsync(It.IsAny<string>(), It.IsAny<LocaleMapping>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.InstallAppAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.InstallAppAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.SetStatusBarDemoModeAsync(It.IsAny<string>(), It.IsAny<AndroidStatusBar>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.SetStatusBarDemoModeAsync(It.IsAny<AndroidStatusBar>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.ResetAppDataAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.ResetAppDataAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.StopEmulatorAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
-            mock.Setup(x => x.StopEmulatorAsync(It.IsAny<CancellationToken>()))
-                .Returns(Task.CompletedTask);
-            mock.Setup(x => x.TakeScreenshotAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            mock.Setup(x => x.TakeScreenshotAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
                 
             return mock.Object;
@@ -171,7 +171,7 @@ public class ScreenshotAutomationTests
             var mock = new Mock<IActionExecutor>();
             
             mock.Setup(x => x.ExecuteAsync(It.IsAny<OpenQA.Selenium.Appium.AppiumDriver>(), It.IsAny<RunJob>(), 
-                It.IsAny<ScreenshotPlan>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                It.IsAny<string>(), It.IsAny<ScreenshotPlan>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<ScreenshotResult>
                 {
                     new ScreenshotResult

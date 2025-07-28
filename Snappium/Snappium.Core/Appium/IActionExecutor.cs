@@ -14,6 +14,7 @@ public interface IActionExecutor
     /// </summary>
     /// <param name="driver">Appium driver</param>
     /// <param name="job">Run job with device and language configuration</param>
+    /// <param name="deviceIdentifier">Device identifier (UDID for iOS, serial for Android)</param>
     /// <param name="screenshotPlan">Screenshot plan with actions to execute</param>
     /// <param name="outputDirectory">Directory for saving screenshots</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -21,6 +22,7 @@ public interface IActionExecutor
     Task<List<ScreenshotResult>> ExecuteAsync(
         AppiumDriver driver,
         RunJob job,
+        string deviceIdentifier,
         ScreenshotPlan screenshotPlan,
         string outputDirectory,
         CancellationToken cancellationToken = default);

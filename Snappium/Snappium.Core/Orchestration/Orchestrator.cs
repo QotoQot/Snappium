@@ -149,6 +149,7 @@ public sealed class Orchestrator : IOrchestrator
         var failureArtifacts = new List<FailureArtifact>();
         var success = true;
         string? errorMessage = null;
+        string? deviceIdentifier = null;
 
         try
         {
@@ -156,13 +157,13 @@ public sealed class Orchestrator : IOrchestrator
             var ports = _portAllocator.AllocatePortsForJob(0);
             _snappiumLogger?.LogDebug("Allocated ports: Appium={0}", ports.AppiumPort);
 
-            // Prepare device
+            // Prepare device and get device identifier
             _snappiumLogger?.LogInfo("Preparing device...");
-            await PrepareDeviceAsync(job, config, cancellationToken);
+            deviceIdentifier = await PrepareDeviceAsync(job, config, cancellationToken);
 
             // Build and install app if needed
             _snappiumLogger?.LogInfo("Building and installing app...");
-            await BuildAndInstallAppAsync(job, config, cliOverrides, cancellationToken);
+            await BuildAndInstallAppAsync(job, config, cliOverrides, deviceIdentifier, cancellationToken);
 
             // Create Appium driver and execute screenshot plans
             var serverUrl = cliOverrides?.ServerUrl ?? $"http://localhost:{ports.AppiumPort}";
@@ -178,7 +179,7 @@ public sealed class Orchestrator : IOrchestrator
                     _snappiumLogger?.LogInfo("Taking screenshot: {0}", screenshotPlan.Name);
                     
                     var planResults = await _actionExecutor.ExecuteAsync(
-                        driver, job, screenshotPlan, job.OutputDirectory, cancellationToken);
+                        driver, job, deviceIdentifier, screenshotPlan, job.OutputDirectory, cancellationToken);
                     
                     screenshots.AddRange(planResults);
                     _snappiumLogger?.LogSuccess("Screenshot completed: {0} ({1} files)", screenshotPlan.Name, planResults.Count);
@@ -210,7 +211,7 @@ public sealed class Orchestrator : IOrchestrator
 
                     // Capture failure artifacts
                     _snappiumLogger?.LogWarning("Capturing failure artifacts...");
-                    await CaptureFailureArtifactsAsync(driver, job, failureArtifacts, cancellationToken);
+                    await CaptureFailureArtifactsAsync(driver, job, deviceIdentifier, failureArtifacts, cancellationToken);
                 }
             }
         }
@@ -225,7 +226,7 @@ public sealed class Orchestrator : IOrchestrator
         {
             // Clean up device
             _snappiumLogger?.LogInfo("Cleaning up device...");
-            await CleanupDeviceAsync(job, cancellationToken);
+            await CleanupDeviceAsync(job, deviceIdentifier, cancellationToken);
         }
 
         var endTime = DateTimeOffset.UtcNow;
@@ -254,7 +255,7 @@ public sealed class Orchestrator : IOrchestrator
         };
     }
 
-    private async Task PrepareDeviceAsync(RunJob job, RootConfig config, CancellationToken cancellationToken)
+    private async Task<string> PrepareDeviceAsync(RunJob job, RootConfig config, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Preparing {Platform} device", job.Platform);
 
@@ -264,7 +265,7 @@ public sealed class Orchestrator : IOrchestrator
             
             // iOS preparation sequence
             await _iosDeviceManager.ShutdownAsync(udidOrName, cancellationToken);
-            await _iosDeviceManager.SetLanguageAsync(job.Language, job.LocaleMapping, cancellationToken);
+            await _iosDeviceManager.SetLanguageAsync(udidOrName, job.Language, job.LocaleMapping, cancellationToken);
             await _iosDeviceManager.BootAsync(udidOrName, cancellationToken);
             
             if (config.StatusBar?.Ios != null)
@@ -274,32 +275,41 @@ public sealed class Orchestrator : IOrchestrator
 
             if (config.AppReset?.Policy == "always")
             {
-                await _iosDeviceManager.ResetAppDataAsync(job.AppPath, cancellationToken);
+                var bundleId = await DeviceHelpers.ExtractIosBundleIdAsync(job.AppPath);
+                await _iosDeviceManager.ResetAppDataAsync(udidOrName, bundleId, cancellationToken);
             }
+            
+            return udidOrName;
         }
         else if (job.Platform == Platform.Android && job.AndroidDevice != null)
         {
             // Android preparation sequence
-            await _androidDeviceManager.StartEmulatorAsync(job.AndroidDevice.Name, cancellationToken);
-            await _androidDeviceManager.WaitForBootAsync(timeout: null, cancellationToken);
-            await _androidDeviceManager.SetLanguageAsync(job.Language, job.LocaleMapping, cancellationToken);
+            var deviceSerial = await _androidDeviceManager.StartEmulatorAsync(job.AndroidDevice.Avd, cancellationToken);
+            await _androidDeviceManager.WaitForBootAsync(deviceSerial, timeout: null, cancellationToken);
+            await _androidDeviceManager.SetLanguageAsync(deviceSerial, job.Language, job.LocaleMapping, cancellationToken);
             
             if (config.StatusBar?.Android != null)
             {
-                await _androidDeviceManager.SetStatusBarDemoModeAsync(config.StatusBar.Android, cancellationToken);
+                await _androidDeviceManager.SetStatusBarDemoModeAsync(deviceSerial, config.StatusBar.Android, cancellationToken);
             }
 
             if (config.AppReset?.Policy == "always")
             {
-                await _androidDeviceManager.ResetAppDataAsync(job.AppPath, cancellationToken);
+                var bundleId = DeviceHelpers.ExtractAndroidPackageName(job.AppPath);
+                await _androidDeviceManager.ResetAppDataAsync(deviceSerial, bundleId, cancellationToken);
             }
+            
+            return deviceSerial;
         }
+        
+        throw new InvalidOperationException($"Unsupported platform: {job.Platform}");
     }
 
     private async Task BuildAndInstallAppAsync(
         RunJob job,
         RootConfig config,
         CliOverrides? cliOverrides,
+        string deviceIdentifier,
         CancellationToken cancellationToken)
     {
         if (cliOverrides?.NoBuild == true)
@@ -357,11 +367,11 @@ public sealed class Orchestrator : IOrchestrator
         {
             if (job.Platform == Platform.iOS && job.IosDevice != null)
             {
-                await _iosDeviceManager.InstallAppAsync(appPath, cancellationToken);
+                await _iosDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
             }
             else if (job.Platform == Platform.Android)
             {
-                await _androidDeviceManager.InstallAppAsync(appPath, cancellationToken);
+                await _androidDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
             }
         }
     }
@@ -369,6 +379,7 @@ public sealed class Orchestrator : IOrchestrator
     private async Task CaptureFailureArtifactsAsync(
         AppiumDriver driver,
         RunJob job,
+        string deviceIdentifier,
         List<FailureArtifact> failureArtifacts,
         CancellationToken cancellationToken)
     {
@@ -403,11 +414,11 @@ public sealed class Orchestrator : IOrchestrator
                 
                 if (job.Platform == Platform.iOS && job.IosDevice != null)
                 {
-                    await _iosDeviceManager.TakeScreenshotAsync(screenshotPath, cancellationToken);
+                    await _iosDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
                 }
                 else if (job.Platform == Platform.Android)
                 {
-                    await _androidDeviceManager.TakeScreenshotAsync(screenshotPath, cancellationToken);
+                    await _androidDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
                 }
 
                 failureArtifacts.Add(new FailureArtifact
@@ -459,7 +470,7 @@ public sealed class Orchestrator : IOrchestrator
         }
     }
 
-    private async Task CleanupDeviceAsync(RunJob job, CancellationToken cancellationToken)
+    private async Task CleanupDeviceAsync(RunJob job, string? deviceIdentifier, CancellationToken cancellationToken)
     {
         try
         {
@@ -470,9 +481,9 @@ public sealed class Orchestrator : IOrchestrator
                 var udidOrName = DeviceHelpers.GetDeviceIdentifier(job.IosDevice.Udid, job.IosDevice.Name);
                 await _iosDeviceManager.ShutdownAsync(udidOrName, cancellationToken);
             }
-            else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+            else if (job.Platform == Platform.Android && job.AndroidDevice != null && deviceIdentifier != null)
             {
-                await _androidDeviceManager.StopEmulatorAsync(cancellationToken);
+                await _androidDeviceManager.StopEmulatorAsync(deviceIdentifier, cancellationToken);
             }
         }
         catch (Exception ex)

@@ -12,31 +12,34 @@ public interface IAndroidDeviceManager : IDeviceManager
     /// </summary>
     /// <param name="avdName">AVD name to start</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Task that completes when emulator is started</returns>
-    Task StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default);
+    /// <returns>Task that returns the emulator serial when started</returns>
+    Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Wait for the Android emulator to finish booting.
     /// </summary>
+    /// <param name="deviceSerial">Emulator serial number</param>
     /// <param name="timeout">Maximum time to wait for boot</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task that completes when emulator is ready</returns>
-    Task WaitForBootAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default);
+    Task WaitForBootAsync(string deviceSerial, TimeSpan? timeout = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Set status bar demo mode on Android emulator.
     /// </summary>
+    /// <param name="deviceSerial">Emulator serial number</param>
     /// <param name="statusBar">Status bar configuration</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task that completes when status bar is configured</returns>
-    Task SetStatusBarDemoModeAsync(AndroidStatusBar statusBar, CancellationToken cancellationToken = default);
+    Task SetStatusBarDemoModeAsync(string deviceSerial, AndroidStatusBar statusBar, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Stop the Android emulator.
     /// </summary>
+    /// <param name="deviceSerial">Emulator serial number</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task that completes when emulator is stopped</returns>
-    Task StopEmulatorAsync(CancellationToken cancellationToken = default);
+    Task StopEmulatorAsync(string deviceSerial, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get Appium capabilities for an Android device.

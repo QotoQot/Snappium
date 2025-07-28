@@ -34,6 +34,7 @@ public sealed class ActionExecutor : IActionExecutor
     public async Task<List<ScreenshotResult>> ExecuteAsync(
         AppiumDriver driver,
         RunJob job,
+        string deviceIdentifier,
         ScreenshotPlan screenshotPlan,
         string outputDirectory,
         CancellationToken cancellationToken = default)
@@ -73,7 +74,7 @@ public sealed class ActionExecutor : IActionExecutor
                 }
 
                 // Execute the action
-                var result = await ExecuteActionAsync(driver, job, action, outputDirectory, cancellationToken);
+                var result = await ExecuteActionAsync(driver, job, deviceIdentifier, action, outputDirectory, cancellationToken);
                 if (result != null)
                 {
                     results.Add(result);
@@ -188,6 +189,7 @@ public sealed class ActionExecutor : IActionExecutor
     private async Task<ScreenshotResult?> ExecuteActionAsync(
         AppiumDriver driver,
         RunJob job,
+        string deviceIdentifier,
         ScreenshotAction action,
         string outputDirectory,
         CancellationToken cancellationToken)
@@ -240,12 +242,11 @@ public sealed class ActionExecutor : IActionExecutor
             // Take screenshot using device manager
             if (job.Platform == Platform.iOS)
             {
-                var udidOrName = DeviceHelpers.GetDeviceIdentifier(job.IosDevice!.Udid, job.IosDevice.Name);
-                await _iosDeviceManager.TakeScreenshotAsync(filePath, cancellationToken);
+                await _iosDeviceManager.TakeScreenshotAsync(deviceIdentifier, filePath, cancellationToken);
             }
             else if (job.Platform == Platform.Android)
             {
-                await _androidDeviceManager.TakeScreenshotAsync(filePath, cancellationToken);
+                await _androidDeviceManager.TakeScreenshotAsync(deviceIdentifier, filePath, cancellationToken);
             }
 
             return new ScreenshotResult

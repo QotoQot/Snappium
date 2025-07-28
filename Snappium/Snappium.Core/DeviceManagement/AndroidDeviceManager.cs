@@ -13,9 +13,6 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     private readonly ICommandRunner _commandRunner;
     private readonly ILogger<AndroidDeviceManager> _logger;
 
-    private string? _currentAvd;
-    private string? _emulatorSerial;
-
     public AndroidDeviceManager(ICommandRunner commandRunner, ILogger<AndroidDeviceManager> logger)
     {
         _commandRunner = commandRunner;
@@ -23,14 +20,13 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default)
+    public async Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting Android emulator: {AvdName}", avdName);
-        _currentAvd = avdName;
 
         // Find an available port for the emulator
         var port = await FindAvailableEmulatorPortAsync(cancellationToken);
-        _emulatorSerial = $"emulator-{port}";
+        var emulatorSerial = $"emulator-{port}";
 
         var args = new List<string>
         {
@@ -55,13 +51,13 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         await DeviceHelpers.DelayAsync(TimeSpan.FromSeconds(5), _logger, "emulator startup", cancellationToken);
 
         // Check if emulator is starting up
-        var isStarting = await IsEmulatorStartingAsync(cancellationToken);
+        var isStarting = await IsEmulatorStartingAsync(emulatorSerial, cancellationToken);
         if (!isStarting)
         {
             throw new InvalidOperationException($"Failed to start Android emulator {avdName}");
         }
 
-        _logger.LogInformation("Android emulator {AvdName} is starting up on {Serial}", avdName, _emulatorSerial);
+        _logger.LogInformation("Android emulator {AvdName} is starting up on {Serial}", avdName, emulatorSerial);
 
         // Don't await the emulator task here - it runs until the emulator is shut down
         _ = emulatorTask.ContinueWith(t =>
@@ -71,48 +67,41 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
                 _logger.LogError(t.Exception, "Emulator process failed");
             }
         }, TaskScheduler.Default);
+
+        return emulatorSerial;
     }
 
     /// <inheritdoc />
-    public async Task WaitForBootAsync(TimeSpan? timeout = null, CancellationToken cancellationToken = default)
+    public async Task WaitForBootAsync(string deviceSerial, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently starting. Start an emulator first.");
-        }
-
         var effectiveTimeout = timeout ?? TimeSpan.FromMinutes(5);
-        _logger.LogInformation("Waiting for Android emulator {Serial} to finish booting", _emulatorSerial);
+        _logger.LogInformation("Waiting for Android emulator {Serial} to finish booting", deviceSerial);
 
         var isBooted = await DeviceHelpers.PollUntilAsync(
-            async () => await IsEmulatorBootedAsync(cancellationToken),
+            async () => await IsEmulatorBootedAsync(deviceSerial, cancellationToken),
             timeout: effectiveTimeout,
             pollingInterval: TimeSpan.FromSeconds(5),
             logger: _logger,
-            operationName: $"emulator {_emulatorSerial} boot",
+            operationName: $"emulator {deviceSerial} boot",
             cancellationToken: cancellationToken);
 
         if (!isBooted)
         {
-            throw new TimeoutException($"Android emulator {_emulatorSerial} did not finish booting within {effectiveTimeout}");
+            throw new TimeoutException($"Android emulator {deviceSerial} did not finish booting within {effectiveTimeout}");
         }
 
-        _logger.LogInformation("Android emulator {Serial} is now booted and ready", _emulatorSerial);
+        _logger.LogInformation("Android emulator {Serial} is now booted and ready", deviceSerial);
     }
 
     /// <inheritdoc />
-    public async Task SetLanguageAsync(string languageTag, LocaleMapping localeMapping, CancellationToken cancellationToken = default)
+    public async Task SetLanguageAsync(string deviceSerial, string languageTag, LocaleMapping localeMapping, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently active. Start an emulator first.");
-        }
-
         var androidLocale = localeMapping.Android;
         _logger.LogInformation("Setting Android emulator language to {Language} (locale: {Locale})", languageTag, androidLocale);
 
         // Set the system locale
         var localeResult = await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "setprop", "persist.sys.locale", androidLocale],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
@@ -124,6 +113,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
         // Broadcast locale change
         var broadcastResult = await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "am", "broadcast", "-a", "android.intent.action.LOCALE_CHANGED"],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
@@ -133,21 +123,17 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             _logger.LogWarning("Failed to broadcast locale change: {Error}", broadcastResult.StandardError);
         }
 
-        _logger.LogDebug("Language configuration completed for {Serial}", _emulatorSerial);
+        _logger.LogDebug("Language configuration completed for {Serial}", deviceSerial);
     }
 
     /// <inheritdoc />
-    public async Task SetStatusBarDemoModeAsync(AndroidStatusBar statusBar, CancellationToken cancellationToken = default)
+    public async Task SetStatusBarDemoModeAsync(string deviceSerial, AndroidStatusBar statusBar, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently active. Start an emulator first.");
-        }
-
-        _logger.LogInformation("Setting Android status bar demo mode for {Serial}", _emulatorSerial);
+        _logger.LogInformation("Setting Android status bar demo mode for {Serial}", deviceSerial);
 
         // Enable demo mode
         var enableResult = await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "settings", "put", "global", "sysui_demo_allowed", "1"],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
@@ -177,28 +163,24 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
         foreach (var command in commands)
         {
-            var result = await RunAdbCommandAsync(command, timeout: TimeSpan.FromMinutes(1), cancellationToken: cancellationToken);
+            var result = await RunAdbCommandAsync(deviceSerial, command, timeout: TimeSpan.FromMinutes(1), cancellationToken: cancellationToken);
             if (!result.IsSuccess)
             {
                 _logger.LogWarning("Failed to set status bar element: {Error}", result.StandardError);
             }
         }
 
-        _logger.LogDebug("Status bar demo mode configured for {Serial}", _emulatorSerial);
+        _logger.LogDebug("Status bar demo mode configured for {Serial}", deviceSerial);
     }
 
     /// <inheritdoc />
-    public async Task InstallAppAsync(string apkPath, CancellationToken cancellationToken = default)
+    public async Task InstallAppAsync(string deviceSerial, string apkPath, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently active. Start an emulator first.");
-        }
-
         DeviceHelpers.ValidateFilePath(apkPath, "Android APK");
-        _logger.LogInformation("Installing Android app {ApkPath} on {Serial}", apkPath, _emulatorSerial);
+        _logger.LogInformation("Installing Android app {ApkPath} on {Serial}", apkPath, deviceSerial);
 
         var result = await RunAdbCommandAsync(
+            deviceSerial,
             ["install", "-r", apkPath],  // -r flag allows reinstallation
             timeout: TimeSpan.FromMinutes(5),
             cancellationToken: cancellationToken);
@@ -212,19 +194,15 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task TakeScreenshotAsync(string outputFilePath, CancellationToken cancellationToken = default)
+    public async Task TakeScreenshotAsync(string deviceSerial, string outputFilePath, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently active. Start an emulator first.");
-        }
-
         DeviceHelpers.EnsureDirectoryExists(Path.GetDirectoryName(outputFilePath)!);
         _logger.LogDebug("Taking Android screenshot: {OutputPath}", outputFilePath);
 
         // Take screenshot on device
         var tempPath = "/sdcard/screenshot.png";
         var screenshotResult = await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "screencap", "-p", tempPath],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
@@ -236,6 +214,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
         // Pull screenshot to host
         var pullResult = await RunAdbCommandAsync(
+            deviceSerial,
             ["pull", tempPath, outputFilePath],
             timeout: TimeSpan.FromMinutes(1),
             cancellationToken: cancellationToken);
@@ -247,6 +226,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
         // Clean up temp file
         await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "rm", tempPath],
             timeout: TimeSpan.FromSeconds(30),
             cancellationToken: cancellationToken);
@@ -261,16 +241,12 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task ResetAppDataAsync(string packageName, CancellationToken cancellationToken = default)
+    public async Task ResetAppDataAsync(string deviceSerial, string packageName, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            throw new InvalidOperationException("No emulator is currently active. Start an emulator first.");
-        }
-
-        _logger.LogInformation("Resetting app data for {PackageName} on {Serial}", packageName, _emulatorSerial);
+        _logger.LogInformation("Resetting app data for {PackageName} on {Serial}", packageName, deviceSerial);
 
         var result = await RunAdbCommandAsync(
+            deviceSerial,
             ["shell", "pm", "clear", packageName],
             timeout: TimeSpan.FromMinutes(2),
             cancellationToken: cancellationToken);
@@ -287,17 +263,12 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     /// <inheritdoc />
-    public async Task StopEmulatorAsync(CancellationToken cancellationToken = default)
+    public async Task StopEmulatorAsync(string deviceSerial, CancellationToken cancellationToken = default)
     {
-        if (_emulatorSerial == null)
-        {
-            _logger.LogInformation("No emulator is currently active");
-            return;
-        }
-
-        _logger.LogInformation("Stopping Android emulator {Serial}", _emulatorSerial);
+        _logger.LogInformation("Stopping Android emulator {Serial}", deviceSerial);
 
         var result = await RunAdbCommandAsync(
+            deviceSerial,
             ["emu", "kill"],
             timeout: TimeSpan.FromMinutes(2),
             cancellationToken: cancellationToken);
@@ -307,9 +278,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             _logger.LogWarning("Failed to stop emulator gracefully: {Error}", result.StandardError);
         }
 
-        _emulatorSerial = null;
-        _currentAvd = null;
-        _logger.LogDebug("Emulator stop command completed");
+        _logger.LogDebug("Emulator stop command completed for {Serial}", deviceSerial);
     }
 
     /// <inheritdoc />
@@ -333,17 +302,12 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     private async Task<Infrastructure.CommandResult> RunAdbCommandAsync(
+        string deviceSerial,
         string[] args,
         TimeSpan? timeout = null,
         CancellationToken cancellationToken = default)
     {
-        var fullArgs = new List<string>();
-        
-        if (_emulatorSerial != null)
-        {
-            fullArgs.AddRange(["-s", _emulatorSerial]);
-        }
-        
+        var fullArgs = new List<string> { "-s", deviceSerial };
         fullArgs.AddRange(args);
 
         return await _commandRunner.RunAsync(
@@ -373,7 +337,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         throw new InvalidOperationException("No available emulator ports found");
     }
 
-    private async Task<bool> IsEmulatorStartingAsync(CancellationToken cancellationToken)
+    private async Task<bool> IsEmulatorStartingAsync(string emulatorSerial, CancellationToken cancellationToken)
     {
         try
         {
@@ -383,7 +347,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
                 timeout: TimeSpan.FromSeconds(10),
                 cancellationToken: cancellationToken);
 
-            return result.IsSuccess && result.StandardOutput.Contains(_emulatorSerial ?? "");
+            return result.IsSuccess && result.StandardOutput.Contains(emulatorSerial);
         }
         catch (Exception ex)
         {
@@ -392,13 +356,12 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         }
     }
 
-    private async Task<bool> IsEmulatorBootedAsync(CancellationToken cancellationToken)
+    private async Task<bool> IsEmulatorBootedAsync(string deviceSerial, CancellationToken cancellationToken)
     {
-        if (_emulatorSerial == null) return false;
-
         try
         {
             var result = await RunAdbCommandAsync(
+                deviceSerial,
                 ["shell", "getprop", "sys.boot_completed"],
                 timeout: TimeSpan.FromSeconds(10),
                 cancellationToken: cancellationToken);
