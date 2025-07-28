@@ -72,8 +72,8 @@ public sealed class BuildService : IBuildService
             {
                 _logger.LogInformation("Build completed successfully in {Duration}ms", stopwatch.ElapsedMilliseconds);
                 
-                // Try to discover the output directory
-                var outputDir = await GetOutputDirectoryAsync(csprojPath, configuration, targetFramework);
+                // Get actual output directory from MSBuild instead of guessing
+                var outputDir = await GetOutputDirectoryFromMSBuildAsync(csprojPath, configuration, targetFramework, platform, cancellationToken);
                 
                 return new BuildResult
                 {
@@ -139,23 +139,109 @@ public sealed class BuildService : IBuildService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error discovering artifacts with pattern '{Pattern}'", searchPattern);
-            return Task.FromResult<string?>(null);
+            return Task.FromResult<string?>(null!);
         }
     }
 
-    private Task<string?> GetOutputDirectoryAsync(string csprojPath, string configuration, string? targetFramework)
+    /// <summary>
+    /// Gets the actual output directory by querying MSBuild properties instead of guessing paths.
+    /// This is more reliable than path guessing since it respects custom OutputPath, TFM, and RID settings.
+    /// </summary>
+    private async Task<string?> GetOutputDirectoryFromMSBuildAsync(
+        string csprojPath,
+        string configuration,
+        string? targetFramework,
+        Platform platform,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogDebug("Querying MSBuild for output directory: {Project}", csprojPath);
+
+            var args = new List<string>
+            {
+                "msbuild",
+                csprojPath,
+                "-getProperty:OutputPath",
+                "-nologo",
+                $"-p:Configuration={configuration}"
+            };
+
+            if (!string.IsNullOrEmpty(targetFramework))
+            {
+                args.Add($"-p:TargetFramework={targetFramework}");
+            }
+
+            // Add platform-specific properties to match build configuration
+            if (platform == Platform.iOS)
+            {
+                args.Add("-p:RuntimeIdentifier=ios-arm64");
+            }
+            else if (platform == Platform.Android)
+            {
+                args.Add("-p:AndroidUseAapt2=true");
+            }
+
+            var result = await _commandRunner.RunAsync(
+                "dotnet",
+                [.. args],
+                timeout: TimeSpan.FromSeconds(30),
+                cancellationToken: cancellationToken);
+
+            if (result.ExitCode == 0)
+            {
+                // The -getProperty:OutputPath option returns the property value directly
+                var outputPath = result.StandardOutput.Trim();
+                
+                if (!string.IsNullOrEmpty(outputPath))
+                {
+                    // Convert relative path to absolute path
+                    if (!Path.IsPathRooted(outputPath))
+                    {
+                        var projectDir = Path.GetDirectoryName(csprojPath);
+                        if (projectDir != null)
+                        {
+                            outputPath = Path.GetFullPath(Path.Combine(projectDir, outputPath));
+                        }
+                    }
+
+                    _logger.LogDebug("MSBuild reported output directory: {OutputPath}", outputPath);
+                    return outputPath;
+                }
+            }
+
+            _logger.LogWarning("Failed to get output directory from MSBuild, exit code: {ExitCode}, output: {Output}",
+                result.ExitCode, result.StandardOutput);
+
+            // Fallback to conventional path guessing as last resort
+            return GetConventionalOutputPath(csprojPath, configuration, targetFramework);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error querying MSBuild for output directory: {Project}", csprojPath);
+            
+            // Fallback to conventional path guessing
+            return GetConventionalOutputPath(csprojPath, configuration, targetFramework);
+        }
+    }
+
+    /// <summary>
+    /// Fallback method that uses conventional .NET output path structure.
+    /// Used when MSBuild query fails.
+    /// </summary>
+    private string? GetConventionalOutputPath(string csprojPath, string configuration, string? targetFramework)
     {
         try
         {
             var projectDir = Path.GetDirectoryName(csprojPath);
-            if (projectDir == null) return Task.FromResult<string?>(null);
+            if (projectDir == null) return null;
 
             // Standard .NET output structure: bin/{configuration}/{tfm}/
             var binDir = Path.Combine(projectDir, "bin", configuration);
             
             if (!Directory.Exists(binDir))
             {
-                return Task.FromResult<string?>(null);
+                return null;
             }
 
             // If target framework is specified, look for that specific directory
@@ -164,7 +250,7 @@ public sealed class BuildService : IBuildService
                 var tfmDir = Path.Combine(binDir, targetFramework);
                 if (Directory.Exists(tfmDir))
                 {
-                    return Task.FromResult<string?>(tfmDir);
+                    return tfmDir;
                 }
             }
 
@@ -177,15 +263,15 @@ public sealed class BuildService : IBuildService
                     .OrderByDescending(di => di.LastWriteTime)
                     .First();
                 
-                return Task.FromResult<string?>(latestDir.FullName);
+                return latestDir.FullName;
             }
 
-            return Task.FromResult<string?>(binDir);
+            return binDir;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error determining output directory for {Project}", csprojPath);
-            return Task.FromResult<string?>(null);
+            _logger.LogError(ex, "Error determining conventional output path for {Project}", csprojPath);
+            return null;
         }
     }
 }

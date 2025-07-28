@@ -94,13 +94,20 @@ public class BuildServiceTests
         // Act
         await _buildService.BuildAsync(Platform.iOS, _tempProjectPath, "Release");
 
-        // Assert
+        // Assert - Should be called twice: once for build, once for getting output path
         _commandRunnerMock.Verify(x => x.RunAsync(
             "dotnet",
-            It.Is<string[]>(args => args.Contains("-p:RuntimeIdentifier=ios-arm64")),
+            It.Is<string[]>(args => args.Contains("build") && args.Contains("-p:RuntimeIdentifier=ios-arm64")),
             It.IsAny<string?>(),
             It.IsAny<TimeSpan?>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet build with iOS runtime identifier");
+            
+        _commandRunnerMock.Verify(x => x.RunAsync(
+            "dotnet",
+            It.Is<string[]>(args => args.Contains("msbuild") && args.Contains("-getProperty:OutputPath") && args.Contains("-p:RuntimeIdentifier=ios-arm64")),
+            It.IsAny<string?>(),
+            It.IsAny<TimeSpan?>(),
+            It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet msbuild to get output path with iOS runtime identifier");
     }
 
     [Test]
@@ -114,16 +121,28 @@ public class BuildServiceTests
         // Act
         await _buildService.BuildAsync(Platform.Android, _tempProjectPath, "Debug", "net8.0-android");
 
-        // Assert
+        // Assert - Should be called twice: once for build, once for getting output path
         _commandRunnerMock.Verify(x => x.RunAsync(
             "dotnet",
             It.Is<string[]>(args => 
+                args.Contains("build") &&
                 args.Contains("-p:AndroidUseAapt2=true") &&
                 args.Contains("-f") &&
                 args.Contains("net8.0-android")),
             It.IsAny<string?>(),
             It.IsAny<TimeSpan?>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet build with Android properties");
+            
+        _commandRunnerMock.Verify(x => x.RunAsync(
+            "dotnet",
+            It.Is<string[]>(args => 
+                args.Contains("msbuild") &&
+                args.Contains("-getProperty:OutputPath") &&
+                args.Contains("-p:AndroidUseAapt2=true") &&
+                args.Contains("-p:TargetFramework=net8.0-android")),
+            It.IsAny<string?>(),
+            It.IsAny<TimeSpan?>(),
+            It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet msbuild to get output path with Android properties");
     }
 
     [Test]
