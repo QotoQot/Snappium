@@ -13,6 +13,7 @@ This comprehensive troubleshooting guide helps you diagnose and resolve common i
 - [Screenshot Execution Issues](#screenshot-execution-issues)
 - [Network & Port Issues](#network--port-issues)
 - [Performance & Timeout Issues](#performance--timeout-issues)
+- [Process Management Issues](#process-management-issues)
 - [Platform-Specific Issues](#platform-specific-issues)
 - [Advanced Debugging](#advanced-debugging)
 
@@ -915,10 +916,14 @@ Error: listen EADDRINUSE: address already in use :::4723
    {
      "Ports": {
        "BasePort": 4724,
-       "PortOffset": 20
+       "PortOffset": 20,
+       "EmulatorStartPort": 5554,
+       "EmulatorEndPort": 5600
      }
    }
    ```
+   
+   **Note**: All default values are centrally managed and can be overridden via configuration or command-line options.
 
 3. **Kill processes using ports**:
    ```bash
@@ -1036,6 +1041,109 @@ Timeout waiting for element 'loading-indicator' to disappear
    # Check memory usage
    free -h    # Linux
    vm_stat    # macOS
+   ```
+
+## Process Management Issues
+
+### Graceful Shutdown
+
+**Problem**: Need to stop Snappium execution safely
+```
+User wants to interrupt long-running screenshot job
+```
+
+**Solutions**:
+1. **Use Ctrl+C for graceful shutdown**:
+   ```bash
+   # Press Ctrl+C during execution
+   # Snappium will automatically:
+   # - Stop all Appium servers
+   # - Shutdown emulators and simulators  
+   # - Clean up temporary resources
+   # - Complete current screenshot before stopping
+   ```
+
+2. **Wait for cleanup completion**:
+   ```
+   Cancellation requested. Shutting down managed processes...
+   Process cleanup completed.
+   ```
+
+3. **Force termination only if needed**:
+   ```bash
+   # If graceful shutdown hangs, force kill (not recommended)
+   pkill -f snappium
+   ```
+
+### Zombie Processes
+
+**Problem**: Processes left running after Snappium exits
+```
+Appium servers or emulators still running after job completion
+```
+
+**Solutions**:
+1. **Check for managed process cleanup**:
+   ```bash
+   # Verify no Snappium-managed processes remain
+   ps aux | grep appium
+   ps aux | grep emulator
+   ps aux | grep Simulator
+   ```
+
+2. **Manual cleanup if needed**:
+   ```bash
+   # Kill remaining Appium servers
+   pkill -f appium
+   
+   # Stop Android emulators
+   adb emu kill
+   
+   # Shutdown iOS simulators
+   xcrun simctl shutdown all
+   ```
+
+3. **Verify process manager functionality**:
+   ```bash
+   # Run with verbose logging to see cleanup messages
+   snappium run --config config.json --verbose
+   # Look for "Process cleanup completed" messages
+   ```
+
+### Port Cleanup Issues
+
+**Problem**: Ports remain allocated after process termination
+```
+Error: listen EADDRINUSE: address already in use :::4723
+```
+
+**Solutions**:
+1. **Use centralized port management**:
+   ```json
+   {
+     "Ports": {
+       "BasePort": 4723,
+       "PortOffset": 10,
+       "EmulatorStartPort": 5554,
+       "EmulatorEndPort": 5600
+     }
+   }
+   ```
+
+2. **Clear port conflicts manually**:
+   ```bash
+   # Find processes using default ports
+   lsof -ti:4723 | xargs kill  # Appium
+   lsof -ti:5554 | xargs kill  # Android emulator
+   
+   # Or use different port range
+   snappium run --config config.json --base-port 4724
+   ```
+
+3. **Verify automatic port cleanup**:
+   ```bash
+   # Check that ports are freed after graceful shutdown
+   netstat -tuln | grep 4723
    ```
 
 ## Platform-Specific Issues
