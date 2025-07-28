@@ -116,6 +116,7 @@ ConfigLoader → RootConfig → RunPlanBuilder → RunPlan → Jobs[]
 - `RunPlanBuilder`: Matrix expansion (devices × languages × screenshots)
 - `PortAllocator`: Port management for parallel execution
 - `RunJob`: Individual execution unit (platform + device + language + screenshots)
+- `Defaults`: Centralized constants for ports, timeouts, concurrency, and limits
 
 ### 3. Orchestrator (Central Coordination)
 
@@ -364,9 +365,11 @@ public sealed class ProcessManager : IDisposable
 
 **Cleanup Triggers:**
 - Application exit (ProcessExit event)
-- Ctrl+C interrupt (CancelKeyPress event)
+- Ctrl+C interrupt (CancelKeyPress event) - **Graceful shutdown implemented**
 - Unhandled exceptions (UnhandledException event)
 - Manual disposal
+
+The CLI implements graceful shutdown through `Console.CancelKeyPress` handler in `Program.cs`, ensuring all managed processes are properly cleaned up even when users interrupt execution with Ctrl+C.
 
 ## Build & Deployment
 
@@ -1067,15 +1070,85 @@ temp/
     └── metadata.json
 ```
 
+## Testing Architecture
+
+### MockCommandRunner for Test Isolation
+
+**Location**: `Snappium.Tests/TestHelpers/MockCommandRunner.cs`
+
+The testing infrastructure includes a comprehensive mock implementation of `ICommandRunner` that provides:
+
+```csharp
+public class MockCommandRunner : ICommandRunner
+{
+    // Command execution tracking
+    public IReadOnlyList<ExecutedCommand> ExecutedCommands { get; }
+    
+    // Flexible command setup
+    public void SetupCommand(string command, string[] arguments, int exitCode = 0, ...);
+    public void SetupCommand(string command, Func<string[], bool> argumentMatcher, ...);
+    
+    // Pre-configured platform setups
+    public void SetupDefaultAndroidCommands();
+    public void SetupDefaultIosCommands();
+    
+    // Verification methods
+    public bool WasCommandExecuted(string command, params string[] arguments);
+    public int GetExecutionCount(string command, string[]? arguments = null);
+}
+```
+
+**Key Testing Features:**
+- **Command Verification**: Track and verify exact command execution
+- **Flexible Matching**: Support both exact argument matching and custom predicates
+- **Pre-configured Setups**: Built-in command setups for common iOS and Android operations
+- **Execution Tracking**: Complete audit trail of all command executions with timeouts and working directories
+- **Reset Capability**: Clean state between tests
+
+This enables comprehensive integration testing without the brittleness of running actual external processes, while maintaining realistic command execution flows.
+
+### Centralized Configuration
+
+**Location**: `Snappium.Core/Config/Defaults.cs`
+
+All default values are centralized in a single location for maintainability:
+
+```csharp
+public static class Defaults
+{
+    public static class Ports
+    {
+        public const int AppiumBasePort = 4723;
+        public const int PortOffset = 10;
+        public const int EmulatorStartPort = 5554;
+        public const int EmulatorEndPort = 5600;
+    }
+    
+    public static class Timeouts  
+    {
+        public static readonly TimeSpan ShortOperation = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan BuildOperation = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan ElementOperation = TimeSpan.FromSeconds(10);
+    }
+    
+    public static class Concurrency
+    {
+        public static int CalculateOptimalConcurrency(int jobCount) { ... }
+    }
+}
+```
+
 ## Summary
 
 The Snappium architecture provides a robust, scalable foundation for cross-platform mobile screenshot automation. Key architectural strengths:
 
 - **Separation of Concerns**: Clear boundaries between configuration, orchestration, device management, and execution
-- **Platform Abstraction**: Unified interfaces that hide platform-specific implementation details
+- **Platform Abstraction**: Unified interfaces that hide platform-specific implementation details  
 - **Tool Integration**: Seamless coordination of multiple external tools through command runners
 - **Failure Resilience**: Comprehensive error handling and diagnostic artifact collection
+- **Graceful Shutdown**: Proper cleanup of all managed processes on interruption
+- **Centralized Configuration**: Single source of truth for all default values and constants
+- **Enhanced Testability**: Sophisticated mocking infrastructure for comprehensive testing without external dependencies
 - **Extensibility**: Plugin-friendly architecture for new platforms, actions, and validation strategies
-- **Testability**: Dependency injection and interface-based design enable comprehensive unit testing
 
 The system successfully abstracts the complexity of coordinating iOS simulators, Android emulators, Appium servers, and mobile application builds while providing a simple, configuration-driven interface for users.
