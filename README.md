@@ -10,7 +10,8 @@ Snappium automates the process of taking screenshots across multiple devices, la
 - **Multi-Language**: Automated language switching and locale configuration
 - **Action-Driven**: Flexible navigation using configurable actions (tap, wait, capture)
 - **Parallel Execution**: Job-level isolation with configurable concurrency and automatic port management
-- **Rich Configuration**: JSON-based configuration with schema validation
+- **Rich Configuration**: JSON-based configuration with schema validation and centralized defaults
+- **Graceful Shutdown**: Proper cleanup of all managed processes on interruption (Ctrl+C)
 - **Failure Handling**: Automatic artifact collection (page source, screenshots, device logs) with process cleanup
 - **Status Bar Control**: Demo mode and status bar customization
 - **Build Integration**: Automatic app building and artifact discovery
@@ -374,6 +375,8 @@ Configure port ranges for parallel execution and emulator management:
 - `emulatorStartPort`: Starting port for Android emulator allocation (default: 5554)
 - `emulatorEndPort`: Ending port for Android emulator allocation (default: 5600)
 
+All default values are centrally managed and can be overridden in configuration or via command-line options.
+
 ## Output
 
 Snappium generates:
@@ -443,7 +446,16 @@ snappium run --config config.json --no-build \
 
 ### Common Issues
 
-1. **Appium Server Conflicts**
+1. **Graceful Shutdown**
+   ```bash
+   # Interrupt execution safely with Ctrl+C
+   # Snappium will clean up all managed processes:
+   # - Stop Appium servers
+   # - Shutdown emulators/simulators  
+   # - Clean up temporary resources
+   ```
+
+2. **Appium Server Conflicts**
    ```bash
    # Kill existing Appium processes
    pkill -f appium
@@ -451,7 +463,7 @@ snappium run --config config.json --no-build \
    snappium run --config config.json --base-port 4724
    ```
 
-2. **iOS Simulator Issues**
+3. **iOS Simulator Issues**
    ```bash
    # Reset simulators
    xcrun simctl erase all
@@ -459,7 +471,7 @@ snappium run --config config.json --no-build \
    xcrun simctl boot "iPhone 15"
    ```
 
-3. **Android Emulator Issues**
+4. **Android Emulator Issues**
    ```bash
    # List available AVDs
    emulator -list-avds
@@ -467,7 +479,7 @@ snappium run --config config.json --no-build \
    emulator @Pixel_7_API_34
    ```
 
-4. **Build Failures**
+5. **Build Failures**
    ```bash
    # Clean and rebuild
    dotnet clean && dotnet build
