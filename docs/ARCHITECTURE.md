@@ -25,11 +25,12 @@ Snappium is a cross-platform screenshot automation system that coordinates multi
 
 ### Key Design Principles
 
-- **Orchestration-Driven**: Central orchestrator coordinates all processes
-- **Platform-Agnostic**: Unified interface for iOS and Android operations
+- **Orchestration-Driven**: Central orchestrator coordinates all processes with job-level isolation
+- **Platform-Agnostic**: Unified interface for iOS and Android operations with stateless device managers
 - **Action-Based Configuration**: Flexible navigation through configurable actions
-- **Failure-Resilient**: Comprehensive error handling and artifact collection
+- **Failure-Resilient**: Comprehensive error handling, artifact collection, and process cleanup
 - **Tool Integration**: Seamless coordination of external tools (Xcode, Android SDK, Appium)
+- **Parallel Execution**: Job-level isolation enables safe parallel execution with automatic resource management
 
 ## System Architecture
 
@@ -131,12 +132,43 @@ public async Task<RunResult> ExecuteAsync(
 ```
 
 **Orchestrator Responsibilities**:
-1. **Job Execution**: Processes each job sequentially (parallel support planned)
-2. **Device Coordination**: Manages iOS simulators and Android emulators
+1. **Job Execution**: Processes jobs with parallel execution and job-level isolation
+2. **Device Coordination**: Manages iOS simulators and Android emulators with stateless device managers
 3. **Build Management**: Coordinates app building and installation
-4. **Appium Lifecycle**: Manages driver creation and cleanup
-5. **Failure Handling**: Captures artifacts and manages recovery
-6. **Result Aggregation**: Collects and formats execution results
+4. **Appium Lifecycle**: Manages server and driver creation with automatic cleanup
+5. **Process Management**: Ensures proper cleanup of all managed processes (servers, emulators, simulators)
+6. **Failure Handling**: Captures comprehensive artifacts including device logs
+7. **Result Aggregation**: Collects and formats execution results with detailed metrics
+
+### Job-Level Isolation & Parallel Execution
+
+Snappium implements job-level isolation to enable safe parallel execution:
+
+```csharp
+// Each job gets its own dependency injection scope
+using var jobServiceProvider = CreateJobScopedServiceProvider();
+var jobExecutor = jobServiceProvider.ServiceProvider.GetRequiredService<IJobExecutor>();
+
+// Parallel execution with controlled concurrency
+await Parallel.ForEachAsync(
+    runPlan.Jobs,
+    new ParallelOptions
+    {
+        MaxDegreeOfParallelism = CalculateOptimalConcurrency(runPlan.Jobs.Count),
+        CancellationToken = cancellationToken
+    },
+    async (job, ct) => {
+        var jobResult = await jobExecutor.ExecuteAsync(job, config, cliOverrides, ct);
+        // Each job is completely isolated from others
+    });
+```
+
+**Key Isolation Features:**
+- **Separate DI Scopes**: Each job gets its own dependency injection scope
+- **Port Allocation**: Pre-allocated unique ports prevent conflicts
+- **Process Management**: Automatic cleanup of job-specific processes
+- **Resource Isolation**: No shared state between parallel jobs
+- **Error Isolation**: Job failures don't affect other running jobs
 
 ## Entry Points & CLI
 
@@ -221,11 +253,13 @@ public class RunJob
 
 ## Device Management
 
+Snappium uses **stateless device managers** that are thread-safe and can handle multiple concurrent operations without shared state.
+
 ### iOS Device Management
 
 **Location**: `Snappium.Core/DeviceManagement/IosDeviceManager.cs`
 
-Manages iOS simulators through `simctl` commands:
+Manages iOS simulators through `simctl` commands with stateless design:
 
 ```csharp
 public interface IIosDeviceManager
@@ -237,6 +271,7 @@ public interface IIosDeviceManager
     Task InstallAppAsync(string appPath, CancellationToken cancellationToken);
     Task ResetAppDataAsync(string appPath, CancellationToken cancellationToken);
     Task TakeScreenshotAsync(string outputPath, CancellationToken cancellationToken);
+    Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken);
     Dictionary<string, object> GetCapabilities(IosDevice device, string appPath);
 }
 ```
@@ -261,19 +296,21 @@ simctl io booted screenshot output.png         # Capture screenshot
 
 **Location**: `Snappium.Core/DeviceManagement/AndroidDeviceManager.cs`
 
-Manages Android emulators through `emulator` and `adb` commands:
+Manages Android emulators through `emulator` and `adb` commands with stateless design and configurable port ranges:
 
 ```csharp
 public interface IAndroidDeviceManager
 {
-    Task StartEmulatorAsync(string avdName, CancellationToken cancellationToken);
-    Task WaitForBootAsync(TimeSpan? timeout, CancellationToken cancellationToken);
+    Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken);
+    Task<string> StartEmulatorAsync(string avdName, int portRangeStart, int portRangeEnd, CancellationToken cancellationToken);
+    Task WaitForBootAsync(string deviceSerial, TimeSpan? timeout, CancellationToken cancellationToken);
     Task SetLanguageAsync(string language, LocaleMapping localeMapping, CancellationToken cancellationToken);
     Task SetStatusBarDemoModeAsync(AndroidStatusBarConfig statusBar, CancellationToken cancellationToken);
     Task InstallAppAsync(string appPath, CancellationToken cancellationToken);
     Task ResetAppDataAsync(string packageName, CancellationToken cancellationToken);
-    Task TakeScreenshotAsync(string outputPath, CancellationToken cancellationToken);
-    Task StopEmulatorAsync(CancellationToken cancellationToken);
+    Task TakeScreenshotAsync(string deviceSerial, string outputPath, CancellationToken cancellationToken);
+    Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken);
+    Task StopEmulatorAsync(string deviceSerial, CancellationToken cancellationToken);
     Dictionary<string, object> GetCapabilities(AndroidDevice device, string appPath);
 }
 ```
@@ -298,7 +335,38 @@ adb shell pm clear com.package.name            # Clear app data
 # Screenshot capture
 adb shell screencap -p /sdcard/screenshot.png  # Capture screenshot
 adb pull /sdcard/screenshot.png output.png     # Download screenshot
+
+# Log capture  
+adb logcat -d -v time "*:W" "System.err:V"     # Capture device logs
 ```
+
+### Process Management
+
+**Location**: `Snappium.Core/Infrastructure/ProcessManager.cs`
+
+Ensures robust cleanup of all managed processes (Appium servers, emulators, simulators) on application termination:
+
+```csharp
+public sealed class ProcessManager : IDisposable
+{
+    private readonly ConcurrentDictionary<string, IManagedProcess> _managedProcesses;
+    
+    public void RegisterProcess(string processId, IManagedProcess managedProcess);
+    public void UnregisterProcess(string processId);
+    public async Task CleanupAllProcessesAsync(CancellationToken cancellationToken = default);
+}
+```
+
+**Managed Process Types:**
+- **ManagedAppiumServer**: Wraps Appium server instances
+- **ManagedIosSimulator**: Wraps iOS simulator instances  
+- **ManagedAndroidEmulator**: Wraps Android emulator instances
+
+**Cleanup Triggers:**
+- Application exit (ProcessExit event)
+- Ctrl+C interrupt (CancelKeyPress event)
+- Unhandled exceptions (UnhandledException event)
+- Manual disposal
 
 ## Build & Deployment
 

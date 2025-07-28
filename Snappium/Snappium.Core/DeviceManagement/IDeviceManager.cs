@@ -43,4 +43,12 @@ public interface IDeviceManager
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task that completes when language is set</returns>
     Task SetLanguageAsync(string deviceIdentifier, string languageTag, LocaleMapping localeMapping, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Capture device logs for diagnostic purposes.
+    /// </summary>
+    /// <param name="deviceIdentifier">Device identifier (UDID for iOS, serial for Android)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that returns the captured device logs as a string</returns>
+    Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken = default);
 }

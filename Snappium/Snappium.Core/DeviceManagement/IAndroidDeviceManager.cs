@@ -16,6 +16,16 @@ public interface IAndroidDeviceManager : IDeviceManager
     Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Start an Android emulator with configurable port range.
+    /// </summary>
+    /// <param name="avdName">AVD name to start</param>
+    /// <param name="portRangeStart">Starting port for emulator allocation (default: 5554)</param>
+    /// <param name="portRangeEnd">Ending port for emulator allocation (default: 5600)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that returns the emulator serial when started</returns>
+    Task<string> StartEmulatorAsync(string avdName, int portRangeStart, int portRangeEnd, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Wait for the Android emulator to finish booting.
     /// </summary>
     /// <param name="deviceSerial">Emulator serial number</param>

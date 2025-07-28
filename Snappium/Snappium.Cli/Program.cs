@@ -64,9 +64,27 @@ class Program
         services.AddSingleton<IActionExecutor, ActionExecutor>();
         services.AddSingleton<IImageValidator, ImageValidator>();
         
+        // Process management for cleanup
+        services.AddSingleton<ProcessManager>();
+        
         // Planning and orchestration
         services.AddSingleton<RunPlanBuilder>();
-        services.AddScoped<IJobExecutor, JobExecutor>(); // Scoped to enable parallel job isolation
+        services.AddScoped<IJobExecutor>(provider => 
+        {
+            return new JobExecutor(
+                provider.GetRequiredService<IDriverFactory>(),
+                provider.GetRequiredService<IActionExecutor>(),
+                provider.GetRequiredService<IImageValidator>(),
+                provider.GetRequiredService<IIosDeviceManager>(),
+                provider.GetRequiredService<IAndroidDeviceManager>(),
+                provider.GetRequiredService<IBuildService>(),
+                provider.GetRequiredService<IAppiumServerController>(),
+                provider.GetRequiredService<ProcessManager>(),
+                provider, // Pass the service provider itself
+                provider.GetRequiredService<ILogger<JobExecutor>>(),
+                provider.GetService<ISnappiumLogger>()
+            );
+        }); // Scoped to enable parallel job isolation
         services.AddSingleton<IOrchestrator, Orchestrator>();
         services.AddSingleton<IManifestWriter, ManifestWriter>();
         

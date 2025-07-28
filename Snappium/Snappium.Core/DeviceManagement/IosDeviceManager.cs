@@ -287,4 +287,45 @@ public sealed class IosDeviceManager : IIosDeviceManager
             return false;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Capturing iOS simulator logs for device: {Device}", deviceIdentifier);
+
+        try
+        {
+            // Use simctl log show to capture recent logs (last 5 minutes)
+            var result = await _commandRunner.RunAsync(
+                "xcrun",
+                ["simctl", "log", "show", deviceIdentifier, "--style", "compact", "--start", "2024-01-01", "--predicate", "subsystem CONTAINS 'com.apple' OR category = 'default'"],
+                timeout: TimeSpan.FromSeconds(30),
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                var logs = result.StandardOutput;
+                _logger.LogDebug("Successfully captured {LogLength} characters of iOS logs", logs.Length);
+                
+                // Limit log size to prevent excessive memory usage (last 50KB)
+                if (logs.Length > 50000)
+                {
+                    logs = "... (truncated) ...\n" + logs.Substring(logs.Length - 50000);
+                }
+                
+                return logs;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to capture iOS logs (exit code {ExitCode}): {Error}", 
+                    result.ExitCode, result.StandardError);
+                return $"Failed to capture iOS logs: {result.StandardError}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while capturing iOS logs for device: {Device}", deviceIdentifier);
+            return $"Exception while capturing iOS logs: {ex.Message}";
+        }
+    }
 }

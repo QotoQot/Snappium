@@ -22,10 +22,33 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     /// <inheritdoc />
     public async Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting Android emulator: {AvdName}", avdName);
+        // Use default port range
+        return await StartEmulatorAsync(avdName, 5554, 5600, cancellationToken);
+    }
 
-        // Find an available port for the emulator
-        var port = await FindAvailableEmulatorPortAsync(cancellationToken);
+    /// <inheritdoc />
+    public async Task<string> StartEmulatorAsync(string avdName, int portRangeStart, int portRangeEnd, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting Android emulator: {AvdName} (port range: {StartPort}-{EndPort})", avdName, portRangeStart, portRangeEnd);
+
+        // Validate port range
+        if (portRangeStart < 1024 || portRangeStart > 65535)
+        {
+            throw new ArgumentOutOfRangeException(nameof(portRangeStart), "Port range start must be between 1024 and 65535");
+        }
+        
+        if (portRangeEnd < 1024 || portRangeEnd > 65535)
+        {
+            throw new ArgumentOutOfRangeException(nameof(portRangeEnd), "Port range end must be between 1024 and 65535");
+        }
+        
+        if (portRangeStart >= portRangeEnd)
+        {
+            throw new ArgumentException("Port range start must be less than port range end");
+        }
+
+        // Find an available port for the emulator within the specified range
+        var port = await FindAvailableEmulatorPortAsync(portRangeStart, portRangeEnd, cancellationToken);
         var emulatorSerial = $"emulator-{port}";
 
         var args = new List<string>
@@ -317,10 +340,13 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             cancellationToken: cancellationToken);
     }
 
-    private async Task<int> FindAvailableEmulatorPortAsync(CancellationToken cancellationToken)
+    private async Task<int> FindAvailableEmulatorPortAsync(int portRangeStart, int portRangeEnd, CancellationToken cancellationToken)
     {
-        // Find an available port for the emulator (starting from 5554)
-        for (int port = 5554; port < 5600; port += 2) // Emulator uses even ports
+        // Find an available port for the emulator within the specified range
+        // Emulator uses even ports, so start from the first even port in range
+        int startPort = portRangeStart % 2 == 0 ? portRangeStart : portRangeStart + 1;
+        
+        for (int port = startPort; port < portRangeEnd; port += 2)
         {
             var result = await _commandRunner.RunAsync(
                 "adb",
@@ -330,11 +356,12 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
             if (result.IsSuccess && !result.StandardOutput.Contains($"emulator-{port}"))
             {
+                _logger.LogDebug("Found available emulator port: {Port}", port);
                 return port;
             }
         }
 
-        throw new InvalidOperationException("No available emulator ports found");
+        throw new InvalidOperationException($"No available emulator ports found in range {portRangeStart}-{portRangeEnd}");
     }
 
     private async Task<bool> IsEmulatorStartingAsync(string emulatorSerial, CancellationToken cancellationToken)
@@ -385,6 +412,47 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         else
         {
             return "emulator";
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Capturing Android device logs for device: {Device}", deviceIdentifier);
+
+        try
+        {
+            // Use adb logcat to capture recent logs with filtering for important entries
+            var result = await _commandRunner.RunAsync(
+                "adb",
+                ["-s", deviceIdentifier, "logcat", "-d", "-v", "time", "*:W", "System.err:V"],
+                timeout: TimeSpan.FromSeconds(30),
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                var logs = result.StandardOutput;
+                _logger.LogDebug("Successfully captured {LogLength} characters of Android logs", logs.Length);
+                
+                // Limit log size to prevent excessive memory usage (last 50KB)
+                if (logs.Length > 50000)
+                {
+                    logs = "... (truncated) ...\n" + logs.Substring(logs.Length - 50000);
+                }
+                
+                return logs;
+            }
+            else
+            {
+                _logger.LogWarning("Failed to capture Android logs (exit code {ExitCode}): {Error}", 
+                    result.ExitCode, result.StandardError);
+                return $"Failed to capture Android logs: {result.StandardError}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while capturing Android logs for device: {Device}", deviceIdentifier);
+            return $"Exception while capturing Android logs: {ex.Message}";
         }
     }
 }

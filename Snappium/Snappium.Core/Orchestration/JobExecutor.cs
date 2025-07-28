@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
@@ -5,8 +6,8 @@ using Snappium.Core.Appium;
 using Snappium.Core.Build;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
+using Snappium.Core.Infrastructure;
 using Snappium.Core.Logging;
-using Snappium.Core.Planning;
 
 namespace Snappium.Core.Orchestration;
 
@@ -21,7 +22,9 @@ public sealed class JobExecutor : IJobExecutor
     private readonly IIosDeviceManager _iosDeviceManager;
     private readonly IAndroidDeviceManager _androidDeviceManager;
     private readonly IBuildService _buildService;
-    private readonly PortAllocator _portAllocator;
+    private readonly IAppiumServerController _appiumServerController;
+    private readonly ProcessManager _processManager;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<JobExecutor> _logger;
     private readonly ISnappiumLogger? _snappiumLogger;
 
@@ -32,7 +35,9 @@ public sealed class JobExecutor : IJobExecutor
         IIosDeviceManager iosDeviceManager,
         IAndroidDeviceManager androidDeviceManager,
         IBuildService buildService,
-        PortAllocator portAllocator,
+        IAppiumServerController appiumServerController,
+        ProcessManager processManager,
+        IServiceProvider serviceProvider,
         ILogger<JobExecutor> logger,
         ISnappiumLogger? snappiumLogger = null)
     {
@@ -42,7 +47,9 @@ public sealed class JobExecutor : IJobExecutor
         _iosDeviceManager = iosDeviceManager;
         _androidDeviceManager = androidDeviceManager;
         _buildService = buildService;
-        _portAllocator = portAllocator;
+        _appiumServerController = appiumServerController;
+        _processManager = processManager;
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _snappiumLogger = snappiumLogger;
     }
@@ -69,25 +76,45 @@ public sealed class JobExecutor : IJobExecutor
         var success = true;
         string? errorMessage = null;
         string? deviceIdentifier = null;
+        string? appiumProcessId = null;
 
         try
         {
-            // Assign ports for this job (using job index from JobAllocation in future)
-            var ports = _portAllocator.AllocatePortsForJob(0);
-            _snappiumLogger?.LogDebug("Allocated ports: Appium={0}", ports.AppiumPort);
+            // Use pre-allocated ports from the RunJob (assigned during planning phase)
+            var ports = job.Ports;
+            _snappiumLogger?.LogDebug("Using pre-allocated ports: Appium={0}, SystemPort={1}, WdaLocalPort={2}", 
+                ports.AppiumPort, ports.SystemPort, ports.WdaLocalPort);
 
-            // Prepare device and get device identifier
-            _snappiumLogger?.LogInfo("Preparing device...");
-            deviceIdentifier = await PrepareDeviceAsync(job, config, cancellationToken);
+            // Start Appium server and register with ProcessManager
+            _snappiumLogger?.LogInfo("Starting Appium server on port {0}...", ports.AppiumPort);
+            var serverResult = await _appiumServerController.StartServerAsync(ports.AppiumPort, cancellationToken);
+            if (!serverResult.Success)
+            {
+                throw new InvalidOperationException($"Failed to start Appium server on port {ports.AppiumPort}: {serverResult.ErrorMessage}");
+            }
 
-            // Build and install app if needed
-            _snappiumLogger?.LogInfo("Building and installing app...");
-            await BuildAndInstallAppAsync(job, config, cliOverrides, deviceIdentifier, cancellationToken);
+            appiumProcessId = $"appium-{ports.AppiumPort}";
+            var appiumLogger = _serviceProvider.GetRequiredService<ILogger<ManagedAppiumServer>>();
+            var managedAppiumServer = new ManagedAppiumServer(_appiumServerController, ports.AppiumPort, appiumLogger);
+            _processManager.RegisterProcess(appiumProcessId, managedAppiumServer);
 
-            // Create Appium driver and execute screenshot plans
-            var serverUrl = cliOverrides?.ServerUrl ?? $"http://localhost:{ports.AppiumPort}";
-            _snappiumLogger?.LogInfo("Creating Appium driver for {0}", serverUrl);
-            using var driver = await _driverFactory.CreateDriverAsync(job, serverUrl, cancellationToken);
+            try
+            {
+                // Prepare device and get device identifier
+                _snappiumLogger?.LogInfo("Preparing device...");
+                deviceIdentifier = await PrepareDeviceAsync(job, config, cancellationToken);
+                
+                // Register managed device with ProcessManager
+                RegisterManagedDevice(job, deviceIdentifier);
+
+                // Build and install app if needed
+                _snappiumLogger?.LogInfo("Building and installing app...");
+                await BuildAndInstallAppAsync(job, config, cliOverrides, deviceIdentifier, cancellationToken);
+
+                // Create Appium driver and execute screenshot plans
+                var serverUrl = cliOverrides?.ServerUrl ?? $"http://localhost:{ports.AppiumPort}";
+                _snappiumLogger?.LogInfo("Creating Appium driver for {0}", serverUrl);
+                using var driver = await _driverFactory.CreateDriverAsync(job, serverUrl, cancellationToken);
 
             _snappiumLogger?.LogInfo("Executing {0} screenshot plans", job.Screenshots.Count);
             foreach (var screenshotPlan in job.Screenshots)
@@ -131,6 +158,17 @@ public sealed class JobExecutor : IJobExecutor
                     // Capture failure artifacts
                     _snappiumLogger?.LogWarning("Capturing failure artifacts...");
                     await CaptureFailureArtifactsAsync(driver, job, deviceIdentifier, failureArtifacts, cancellationToken);
+                }
+            }
+            }
+            finally
+            {
+                // Unregister and cleanup managed processes
+                _snappiumLogger?.LogInfo("Cleaning up managed processes...");
+                await UnregisterManagedDeviceAsync(job, deviceIdentifier, cancellationToken);
+                if (appiumProcessId != null)
+                {
+                    _processManager.UnregisterProcess(appiumProcessId);
                 }
             }
         }
@@ -203,7 +241,9 @@ public sealed class JobExecutor : IJobExecutor
         else if (job.Platform == Platform.Android && job.AndroidDevice != null)
         {
             // Android preparation sequence
-            var deviceSerial = await _androidDeviceManager.StartEmulatorAsync(job.AndroidDevice.Avd, cancellationToken);
+            var emulatorStartPort = config.Ports?.EmulatorStartPort ?? 5554;
+            var emulatorEndPort = config.Ports?.EmulatorEndPort ?? 5600;
+            var deviceSerial = await _androidDeviceManager.StartEmulatorAsync(job.AndroidDevice.Avd, emulatorStartPort, emulatorEndPort, cancellationToken);
             await _androidDeviceManager.WaitForBootAsync(deviceSerial, timeout: null, cancellationToken);
             await _androidDeviceManager.SetLanguageAsync(deviceSerial, job.Language, job.LocaleMapping, cancellationToken);
             
@@ -360,23 +400,32 @@ public sealed class JobExecutor : IJobExecutor
 
                 if (job.Platform == Platform.iOS && job.IosDevice != null)
                 {
-                    // iOS logs via simctl log show (simplified)
-                    logs = "iOS logs would be captured here";
+                    _snappiumLogger?.LogDebug("Capturing iOS device logs...");
+                    logs = await _iosDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
                 }
                 else if (job.Platform == Platform.Android)
                 {
-                    // Android logs via logcat (simplified)
-                    logs = "Android logcat would be captured here";
+                    _snappiumLogger?.LogDebug("Capturing Android device logs...");
+                    logs = await _androidDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
                 }
 
-                await File.WriteAllTextAsync(logsPath, logs, cancellationToken);
-                
-                failureArtifacts.Add(new FailureArtifact
+                if (!string.IsNullOrEmpty(logs))
                 {
-                    Type = FailureArtifactType.DeviceLogs,
-                    Path = logsPath,
-                    Timestamp = DateTimeOffset.UtcNow
-                });
+                    await File.WriteAllTextAsync(logsPath, logs, cancellationToken);
+                    
+                    failureArtifacts.Add(new FailureArtifact
+                    {
+                        Type = FailureArtifactType.DeviceLogs,
+                        Path = logsPath,
+                        Timestamp = DateTimeOffset.UtcNow
+                    });
+                    
+                    _snappiumLogger?.LogDebug("Successfully captured device logs ({0} characters)", logs.Length);
+                }
+                else
+                {
+                    _snappiumLogger?.LogWarning("No device logs captured");
+                }
             }
             catch (Exception ex)
             {
@@ -408,6 +457,40 @@ public sealed class JobExecutor : IJobExecutor
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error during device cleanup for {Platform} {Device}", job.Platform, job.DeviceFolder);
+        }
+    }
+
+    private void RegisterManagedDevice(RunJob job, string deviceIdentifier)
+    {
+        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        {
+            var deviceProcessId = $"ios-simulator-{deviceIdentifier}";
+            var iosLogger = _serviceProvider.GetRequiredService<ILogger<ManagedIosSimulator>>();
+            var managedDevice = new ManagedIosSimulator(_iosDeviceManager, deviceIdentifier, iosLogger);
+            _processManager.RegisterProcess(deviceProcessId, managedDevice);
+        }
+        else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+        {
+            var deviceProcessId = $"android-emulator-{deviceIdentifier}";
+            var androidLogger = _serviceProvider.GetRequiredService<ILogger<ManagedAndroidEmulator>>();
+            var managedDevice = new ManagedAndroidEmulator(_androidDeviceManager, deviceIdentifier, androidLogger);
+            _processManager.RegisterProcess(deviceProcessId, managedDevice);
+        }
+    }
+
+    private async Task UnregisterManagedDeviceAsync(RunJob job, string? deviceIdentifier, CancellationToken cancellationToken)
+    {
+        if (deviceIdentifier == null) return;
+
+        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        {
+            var deviceProcessId = $"ios-simulator-{deviceIdentifier}";
+            _processManager.UnregisterProcess(deviceProcessId);
+        }
+        else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+        {
+            var deviceProcessId = $"android-emulator-{deviceIdentifier}";
+            _processManager.UnregisterProcess(deviceProcessId);
         }
     }
 }

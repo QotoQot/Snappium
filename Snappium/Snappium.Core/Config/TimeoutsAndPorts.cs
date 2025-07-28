@@ -35,4 +35,14 @@ public sealed class Ports
     /// Port offset between parallel jobs (1-100).
     /// </summary>
     public int? PortOffset { get; init; }
+
+    /// <summary>
+    /// Starting port for Android emulator allocation (1024-65535, default: 5554).
+    /// </summary>
+    public int? EmulatorStartPort { get; init; }
+
+    /// <summary>
+    /// Ending port for Android emulator allocation (1024-65535, default: 5600).
+    /// </summary>
+    public int? EmulatorEndPort { get; init; }
 }

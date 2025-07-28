@@ -1,0 +1,43 @@
+{
+  "devices": {
+    "ios": {
+      "simulators": [
+        {
+          "name": "iPhone 15",
+          "runtime": "iOS 17.0"
+        }
+      ]
+    },
+    "android": {
+      "emulators": [
+        {
+          "avd": "Pixel_6_API_34"
+        }
+      ]
+    }
+  },
+  "languages": ["en-US"],
+  "localeMapping": {
+    "en-US": {
+      "ios": "en_US",
+      "android": "en_US"
+    }
+  },
+  "screenshots": [
+    {
+      "name": "home_screen",
+      "actions": [
+        {
+          "type": "capture",
+          "name": "home"
+        }
+      ]
+    }
+  ],
+  "ports": {
+    "basePort": 4723,
+    "portOffset": 10,
+    "emulatorStartPort": 5554,
+    "emulatorEndPort": 5600
+  }
+}
