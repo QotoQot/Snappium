@@ -21,6 +21,9 @@ public sealed class ConfigLoader
             AllowTrailingCommas = true,
             ReadCommentHandling = JsonCommentHandling.Skip
         };
+        
+        // Add custom converter for ScreenshotAction polymorphic deserialization 
+        _jsonOptions.Converters.Add(new ScreenshotActionJsonConverter());
     }
 
     /// <summary>
@@ -317,7 +320,7 @@ public sealed class ConfigLoader
         {
             Name = dto.Name,
             Orientation = dto.Orientation,
-            Actions = dto.Actions.Select(ConvertActionFromDto).ToList(),
+            Actions = dto.Actions, // Direct assignment - converter handles deserialization
             Assert = dto.Assert != null ? new PlatformAssertions
             {
                 Ios = dto.Assert.TryGetValue("ios", out var iosAssert) ? ConvertSelectorFromDto(iosAssert) : null,
@@ -326,42 +329,6 @@ public sealed class ConfigLoader
         };
     }
 
-    private static ScreenshotAction ConvertActionFromDto(JsonElement actionElement)
-    {
-        if (actionElement.TryGetProperty("tap", out var tapElement))
-        {
-            var selectorDto = JsonSerializer.Deserialize<SelectorDto>(tapElement.GetRawText())!;
-            return new ScreenshotAction { Tap = ConvertSelectorFromDto(selectorDto) };
-        }
-
-        if (actionElement.TryGetProperty("wait", out var waitElement))
-        {
-            var seconds = waitElement.GetProperty("seconds").GetDouble();
-            return new ScreenshotAction { Wait = new WaitConfig { Seconds = seconds } };
-        }
-
-        if (actionElement.TryGetProperty("wait_for", out var waitForElement))
-        {
-            var timeout = waitForElement.GetProperty("timeout").GetInt32();
-            var selectorDto = JsonSerializer.Deserialize<SelectorDto>(waitForElement.GetProperty("selector").GetRawText())!;
-            return new ScreenshotAction 
-            { 
-                WaitFor = new WaitForConfig 
-                { 
-                    Timeout = timeout, 
-                    Selector = ConvertSelectorFromDto(selectorDto) 
-                } 
-            };
-        }
-
-        if (actionElement.TryGetProperty("capture", out var captureElement))
-        {
-            var name = captureElement.GetProperty("name").GetString()!;
-            return new ScreenshotAction { Capture = new CaptureConfig { Name = name } };
-        }
-
-        throw new InvalidOperationException($"Unknown action type in: {actionElement.GetRawText()}");
-    }
 
     private static Selector ConvertSelectorFromDto(SelectorDto dto)
     {
@@ -426,7 +393,7 @@ internal sealed class ScreenshotPlanDto
 {
     public required string Name { get; set; }
     public string? Orientation { get; set; }
-    public required List<JsonElement> Actions { get; set; }
+    public required List<ScreenshotAction> Actions { get; set; }
     public Dictionary<string, SelectorDto>? Assert { get; set; }
 }
 

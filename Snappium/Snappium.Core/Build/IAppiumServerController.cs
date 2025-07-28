@@ -36,6 +36,13 @@ public interface IAppiumServerController
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if process was killed</returns>
     Task<bool> KillProcessOnPortAsync(int port, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stop all managed Appium server instances.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task representing the operation</returns>
+    Task StopAllServersAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -8,19 +9,32 @@ using Snappium.Core.Infrastructure;
 namespace Snappium.Core.Build;
 
 /// <summary>
-/// Controller for managing local Appium server instances.
+/// Controller for managing local Appium server instances with proper process tracking.
 /// </summary>
 public sealed class AppiumServerController : IAppiumServerController
 {
     private readonly ICommandRunner _commandRunner;
     private readonly ILogger<AppiumServerController> _logger;
     private readonly HttpClient _httpClient;
+    private readonly ConcurrentDictionary<int, AppiumServerInstance> _runningServers;
+
+    /// <summary>
+    /// Represents a managed Appium server instance.
+    /// </summary>
+    private sealed record AppiumServerInstance
+    {
+        public required Process Process { get; init; }
+        public required int Port { get; init; }
+        public required string ServerUrl { get; init; }
+        public required DateTime StartTime { get; init; }
+    }
 
     public AppiumServerController(ICommandRunner commandRunner, ILogger<AppiumServerController> logger)
     {
         _commandRunner = commandRunner;
         _logger = logger;
         _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        _runningServers = new ConcurrentDictionary<int, AppiumServerInstance>();
     }
 
     /// <inheritdoc />
@@ -30,22 +44,40 @@ public sealed class AppiumServerController : IAppiumServerController
 
         try
         {
-            // Check if port is already in use
-            if (await IsServerRunningAsync(port, cancellationToken))
+            // Check if we already have a managed server on this port
+            if (_runningServers.TryGetValue(port, out var existingServer))
             {
-                _logger.LogInformation("Appium server already running on port {Port}", port);
-                return new AppiumServerResult
+                if (!existingServer.Process.HasExited)
                 {
-                    Success = true,
-                    ServerUrl = $"http://localhost:{port}"
-                };
+                    _logger.LogInformation("Appium server already running on port {Port} (PID: {ProcessId})", 
+                        port, existingServer.Process.Id);
+                    return new AppiumServerResult
+                    {
+                        Success = true,
+                        ServerUrl = existingServer.ServerUrl,
+                        ProcessId = existingServer.Process.Id
+                    };
+                }
+                else
+                {
+                    // Clean up dead process entry
+                    _runningServers.TryRemove(port, out _);
+                    existingServer.Process.Dispose();
+                }
             }
 
-            // Kill any existing process on the port
-            await KillProcessOnPortAsync(port, cancellationToken);
+            // Check if port is already in use by external process
+            if (await IsServerRunningAsync(port, cancellationToken))
+            {
+                _logger.LogWarning("Port {Port} is in use by external process, attempting to clean up", port);
+                await KillProcessOnPortAsync(port, cancellationToken);
+                
+                // Wait a bit for cleanup
+                await Task.Delay(1000, cancellationToken);
+            }
 
             // Start Appium server
-            var args = new List<string> { "--port", port.ToString() };
+            var args = new List<string> { "--port", port.ToString(), "--log-level", "warn" };
             
             var startInfo = new ProcessStartInfo
             {
@@ -67,7 +99,7 @@ public sealed class AppiumServerController : IAppiumServerController
                 };
             }
 
-            _logger.LogDebug("Started Appium process {ProcessId}", process.Id);
+            _logger.LogDebug("Started Appium process {ProcessId} on port {Port}", process.Id, port);
 
             // Wait for server to be ready
             var serverUrl = $"http://localhost:{port}";
@@ -75,7 +107,20 @@ public sealed class AppiumServerController : IAppiumServerController
 
             if (ready)
             {
-                _logger.LogInformation("Appium server started successfully on {Url}", serverUrl);
+                // Store the server instance for proper tracking
+                var serverInstance = new AppiumServerInstance
+                {
+                    Process = process,
+                    Port = port,
+                    ServerUrl = serverUrl,
+                    StartTime = DateTime.UtcNow
+                };
+
+                _runningServers.TryAdd(port, serverInstance);
+
+                _logger.LogInformation("Appium server started successfully on {Url} (PID: {ProcessId})", 
+                    serverUrl, process.Id);
+                
                 return new AppiumServerResult
                 {
                     Success = true,
@@ -85,7 +130,25 @@ public sealed class AppiumServerController : IAppiumServerController
             }
             else
             {
-                process.Kill();
+                _logger.LogError("Appium server failed to become ready within timeout on port {Port}", port);
+                
+                // Clean up failed process
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error killing failed Appium process {ProcessId}", process.Id);
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+
                 return new AppiumServerResult
                 {
                     Success = false,
@@ -111,6 +174,20 @@ public sealed class AppiumServerController : IAppiumServerController
 
         try
         {
+            // First try to stop our managed server instance
+            if (_runningServers.TryRemove(port, out var serverInstance))
+            {
+                var success = await StopManagedServerAsync(serverInstance, cancellationToken);
+                if (success)
+                {
+                    return new AppiumServerResult { Success = true };
+                }
+                
+                // If graceful stop failed, fall back to force kill
+                _logger.LogWarning("Graceful stop failed for port {Port}, attempting force kill", port);
+            }
+
+            // Fall back to port-based cleanup for external processes
             var killed = await KillProcessOnPortAsync(port, cancellationToken);
             
             return new AppiumServerResult
@@ -153,6 +230,75 @@ public sealed class AppiumServerController : IAppiumServerController
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Gracefully stops a managed Appium server instance.
+    /// </summary>
+    private async Task<bool> StopManagedServerAsync(AppiumServerInstance serverInstance, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var process = serverInstance.Process;
+            var port = serverInstance.Port;
+            
+            _logger.LogDebug("Stopping managed Appium server on port {Port} (PID: {ProcessId})", port, process.Id);
+            
+            if (process.HasExited)
+            {
+                _logger.LogDebug("Process {ProcessId} already exited", process.Id);
+                process.Dispose();
+                return true;
+            }
+
+            // Try graceful shutdown first by closing main window (if available)
+            if (!process.CloseMainWindow())
+            {
+                _logger.LogDebug("CloseMainWindow failed for process {ProcessId}, using Kill", process.Id);
+            }
+
+            // Wait up to 5 seconds for graceful shutdown
+            var gracefulShutdown = await Task.Run(() => process.WaitForExit(5000), cancellationToken);
+            
+            if (gracefulShutdown)
+            {
+                _logger.LogDebug("Appium server {ProcessId} shut down gracefully", process.Id);
+                process.Dispose();
+                return true;
+            }
+
+            // Force kill if graceful shutdown didn't work
+            _logger.LogDebug("Force killing Appium server {ProcessId}", process.Id);
+            process.Kill();
+            
+            // Wait up to 3 seconds for force kill to complete
+            var forceKilled = await Task.Run(() => process.WaitForExit(3000), cancellationToken);
+            process.Dispose();
+            
+            if (forceKilled)
+            {
+                _logger.LogDebug("Appium server {ProcessId} force killed successfully", process.Id);
+                return true;
+            }
+            else
+            {
+                _logger.LogError("Failed to kill Appium server {ProcessId} within timeout", process.Id);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping managed Appium server on port {Port}", serverInstance.Port);
+            try
+            {
+                serverInstance.Process.Dispose();
+            }
+            catch
+            {
+                // Ignore disposal errors
+            }
+            return false;
+        }
     }
 
     /// <inheritdoc />
@@ -288,8 +434,52 @@ public sealed class AppiumServerController : IAppiumServerController
         }
     }
 
+    /// <summary>
+    /// Stops all managed Appium servers.
+    /// </summary>
+    public async Task StopAllServersAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Stopping all {Count} managed Appium servers", _runningServers.Count);
+        
+        var stopTasks = new List<Task>();
+        
+        foreach (var kvp in _runningServers.ToArray())
+        {
+            var port = kvp.Key;
+            var serverInstance = kvp.Value;
+            
+            if (_runningServers.TryRemove(port, out _))
+            {
+                stopTasks.Add(StopManagedServerAsync(serverInstance, cancellationToken));
+            }
+        }
+        
+        if (stopTasks.Count > 0)
+        {
+            await Task.WhenAll(stopTasks);
+        }
+        
+        _logger.LogInformation("Finished stopping all managed Appium servers");
+    }
+
     public void Dispose()
     {
-        _httpClient?.Dispose();
+        try
+        {
+            // Stop all managed servers synchronously during disposal
+            var stopTask = StopAllServersAsync(CancellationToken.None);
+            if (!stopTask.Wait(TimeSpan.FromSeconds(10)))
+            {
+                _logger.LogWarning("Timeout waiting for servers to stop during disposal");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping servers during disposal");
+        }
+        finally
+        {
+            _httpClient?.Dispose();
+        }
     }
 }
