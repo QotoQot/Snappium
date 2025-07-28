@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 using Snappium.Core.Planning;
@@ -9,11 +8,15 @@ namespace Snappium.Cli.Commands;
 
 public class GenerateMatrixCommand : Command
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ConfigLoader _configLoader;
+    private readonly RunPlanBuilder _runPlanBuilder;
+    private readonly ILogger<GenerateMatrixCommand> _logger;
 
-    public GenerateMatrixCommand(IServiceProvider serviceProvider) : base("generate-matrix", "Generate CI matrix JSON from run plan")
+    public GenerateMatrixCommand(ConfigLoader configLoader, RunPlanBuilder runPlanBuilder, ILogger<GenerateMatrixCommand> logger) : base("generate-matrix", "Generate CI matrix JSON from run plan")
     {
-        _serviceProvider = serviceProvider;
+        _configLoader = configLoader;
+        _runPlanBuilder = runPlanBuilder;
+        _logger = logger;
 
         var configOption = new Option<FileInfo>(
             name: "--config",
@@ -93,23 +96,20 @@ public class GenerateMatrixCommand : Command
         string format,
         CancellationToken cancellationToken)
     {
-        var logger = _serviceProvider.GetRequiredService<ILogger<GenerateMatrixCommand>>();
-        
         try
         {
             // Load configuration
-            var configLoader = _serviceProvider.GetRequiredService<ConfigLoader>();
-            var config = await configLoader.LoadAsync(configFile.FullName, schemaPath: null, cancellationToken);
+            var config = await _configLoader.LoadAsync(configFile.FullName, schemaPath: null, cancellationToken);
+            _logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
 
-            logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
-
-            // Create run plan
-            var runPlanBuilder = _serviceProvider.GetRequiredService<RunPlanBuilder>();
-            var portAllocator = _serviceProvider.GetRequiredService<PortAllocator>();
+            // Create run plan with port allocation
+            var configBasePort = config.Ports?.BasePort ?? 4723;
+            var effectivePortOffset = config.Ports?.PortOffset ?? 10;
+            var portAllocator = new PortAllocator(configBasePort, effectivePortOffset);
             
             var outputRoot = output?.FullName ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");
             
-            var runPlan = await runPlanBuilder.BuildAsync(
+            var runPlan = await _runPlanBuilder.BuildAsync(
                 config,
                 outputRoot,
                 platforms,
@@ -119,7 +119,7 @@ public class GenerateMatrixCommand : Command
                 portAllocator,
                 cancellationToken);
 
-            logger.LogInformation("Built run plan with {JobCount} jobs", runPlan.Jobs.Count);
+            _logger.LogInformation("Built run plan with {JobCount} jobs", runPlan.Jobs.Count);
 
             // Generate matrix based on format
             var matrix = format.ToLower() switch
@@ -139,13 +139,13 @@ public class GenerateMatrixCommand : Command
 
             Console.WriteLine(json);
 
-            logger.LogInformation("Generated {Format} matrix with {JobCount} jobs", format, runPlan.Jobs.Count);
+            _logger.LogInformation("Generated {Format} matrix with {JobCount} jobs", format, runPlan.Jobs.Count);
 
             return 0;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Matrix generation failed");
+            _logger.LogError(ex, "Matrix generation failed");
             return 1;
         }
     }

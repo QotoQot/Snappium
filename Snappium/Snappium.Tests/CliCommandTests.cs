@@ -69,7 +69,12 @@ public class CliCommandTests
     public void RunCommand_CanBeCreated()
     {
         // Arrange & Act
-        var command = new RunCommand(_serviceProvider);
+        var command = new RunCommand(
+            _serviceProvider.GetRequiredService<IOrchestrator>(),
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<RunPlanBuilder>(),
+            _serviceProvider.GetRequiredService<IManifestWriter>(),
+            _serviceProvider.GetRequiredService<ILogger<RunCommand>>());
 
         // Assert
         Assert.That(command.Name, Is.EqualTo("run"));
@@ -80,7 +85,9 @@ public class CliCommandTests
     public void ValidateConfigCommand_CanBeCreated()
     {
         // Arrange & Act
-        var command = new ValidateConfigCommand(_serviceProvider);
+        var command = new ValidateConfigCommand(
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<ILogger<ValidateConfigCommand>>());
 
         // Assert
         Assert.That(command.Name, Is.EqualTo("validate-config"));
@@ -91,7 +98,10 @@ public class CliCommandTests
     public void GenerateMatrixCommand_CanBeCreated()
     {
         // Arrange & Act
-        var command = new GenerateMatrixCommand(_serviceProvider);
+        var command = new GenerateMatrixCommand(
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<RunPlanBuilder>(),
+            _serviceProvider.GetRequiredService<ILogger<GenerateMatrixCommand>>());
 
         // Assert
         Assert.That(command.Name, Is.EqualTo("generate-matrix"));
@@ -102,7 +112,12 @@ public class CliCommandTests
     public async Task RunCommand_WithMissingConfig_ReturnsError()
     {
         // Arrange
-        var command = new RunCommand(_serviceProvider);
+        var command = new RunCommand(
+            _serviceProvider.GetRequiredService<IOrchestrator>(),
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<RunPlanBuilder>(),
+            _serviceProvider.GetRequiredService<IManifestWriter>(),
+            _serviceProvider.GetRequiredService<ILogger<RunCommand>>());
         var rootCommand = new RootCommand();
         rootCommand.Add(command);
 
@@ -117,7 +132,9 @@ public class CliCommandTests
     public async Task ValidateConfigCommand_WithMissingConfig_ReturnsError()
     {
         // Arrange
-        var command = new ValidateConfigCommand(_serviceProvider);
+        var command = new ValidateConfigCommand(
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<ILogger<ValidateConfigCommand>>());
         var rootCommand = new RootCommand();
         rootCommand.Add(command);
 
@@ -132,7 +149,10 @@ public class CliCommandTests
     public async Task GenerateMatrixCommand_WithMissingConfig_ReturnsError()
     {
         // Arrange
-        var command = new GenerateMatrixCommand(_serviceProvider);
+        var command = new GenerateMatrixCommand(
+            _serviceProvider.GetRequiredService<ConfigLoader>(),
+            _serviceProvider.GetRequiredService<RunPlanBuilder>(),
+            _serviceProvider.GetRequiredService<ILogger<GenerateMatrixCommand>>());
         var rootCommand = new RootCommand();
         rootCommand.Add(command);
 

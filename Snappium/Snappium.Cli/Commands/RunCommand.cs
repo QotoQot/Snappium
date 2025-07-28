@@ -1,12 +1,7 @@
 using System.CommandLine;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Abstractions;
-using Snappium.Core.Appium;
-using Snappium.Core.Build;
 using Snappium.Core.Config;
-using Snappium.Core.DeviceManagement;
-using Snappium.Core.Infrastructure;
 using Snappium.Core.Orchestration;
 using Snappium.Core.Planning;
 
@@ -14,11 +9,24 @@ namespace Snappium.Cli.Commands;
 
 public class RunCommand : Command
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IOrchestrator _orchestrator;
+    private readonly ConfigLoader _configLoader;
+    private readonly RunPlanBuilder _runPlanBuilder;
+    private readonly IManifestWriter _manifestWriter;
+    private readonly ILogger<RunCommand> _logger;
 
-    public RunCommand(IServiceProvider serviceProvider) : base("run", "Execute screenshot automation run")
+    public RunCommand(
+        IOrchestrator orchestrator,
+        ConfigLoader configLoader,
+        RunPlanBuilder runPlanBuilder,
+        IManifestWriter manifestWriter,
+        ILogger<RunCommand> logger) : base("run", "Execute screenshot automation run")
     {
-        _serviceProvider = serviceProvider;
+        _orchestrator = orchestrator;
+        _configLoader = configLoader;
+        _runPlanBuilder = runPlanBuilder;
+        _manifestWriter = manifestWriter;
+        _logger = logger;
 
         var configOption = new Option<FileInfo>(
             name: "--config",
@@ -62,10 +70,6 @@ public class RunCommand : Command
             ArgumentHelpName = "mode"
         };
 
-        var noBuildOption = new Option<bool>(
-            name: "--no-build",
-            description: "Skip building apps");
-
         var iosAppOption = new Option<FileInfo>(
             name: "--ios-app",
             description: "Path to iOS .app bundle");
@@ -103,7 +107,6 @@ public class RunCommand : Command
         AddOption(langsOption);
         AddOption(screensOption);
         AddOption(buildOption);
-        AddOption(noBuildOption);
         AddOption(iosAppOption);
         AddOption(androidAppOption);
         AddOption(outputOption);
@@ -120,7 +123,6 @@ public class RunCommand : Command
             var langs = context.ParseResult.GetValueForOption(langsOption);
             var screens = context.ParseResult.GetValueForOption(screensOption);
             var build = context.ParseResult.GetValueForOption(buildOption);
-            var noBuild = context.ParseResult.GetValueForOption(noBuildOption);
             var iosApp = context.ParseResult.GetValueForOption(iosAppOption);
             var androidApp = context.ParseResult.GetValueForOption(androidAppOption);
             var output = context.ParseResult.GetValueForOption(outputOption);
@@ -129,7 +131,7 @@ public class RunCommand : Command
             var retryFailed = context.ParseResult.GetValueForOption(retryFailedOption);
             var verbose = context.ParseResult.GetValueForOption(verboseOption);
 
-            context.ExitCode = await ExecuteAsync(config, platforms, devices, langs, screens, build, noBuild, 
+            context.ExitCode = await ExecuteAsync(config, platforms, devices, langs, screens, build, 
                 iosApp, androidApp, output, basePort, dryRun, retryFailed, verbose, context.GetCancellationToken());
         });
     }
@@ -141,7 +143,6 @@ public class RunCommand : Command
         string[]? langs,
         string[]? screens,
         string? build,
-        bool noBuild,
         FileInfo? iosApp,
         FileInfo? androidApp,
         DirectoryInfo? output,
@@ -151,10 +152,8 @@ public class RunCommand : Command
         bool verbose,
         CancellationToken cancellationToken)
     {
-        var logger = _serviceProvider.GetRequiredService<ILogger<RunCommand>>();
-        
         // Create enhanced logger with verbose mode
-        var snappiumLogger = new Snappium.Core.Logging.SnappiumConsoleLogger(logger, verbose);
+        var snappiumLogger = new Snappium.Core.Logging.SnappiumConsoleLogger(_logger, verbose);
         
         if (verbose)
         {
@@ -164,12 +163,11 @@ public class RunCommand : Command
         try
         {
             // Load configuration
-            var configLoader = _serviceProvider.GetRequiredService<ConfigLoader>();
-            var config = await configLoader.LoadAsync(configFile.FullName, schemaPath: null, cancellationToken);
+            var config = await _configLoader.LoadAsync(configFile.FullName, schemaPath: null, cancellationToken);
+            _logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
 
-            logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
-
-            // Build CLI overrides
+            // Build CLI overrides - convert --build never to NoBuild = true for backward compatibility
+            var noBuild = string.Equals(build, "never", StringComparison.OrdinalIgnoreCase);
             var cliOverrides = new CliOverrides
             {
                 IosAppPath = iosApp?.FullName,
@@ -180,24 +178,15 @@ public class RunCommand : Command
                 BuildConfiguration = build
             };
 
-            // Create run plan
-            var runPlanBuilder = _serviceProvider.GetRequiredService<RunPlanBuilder>();
-            var portAllocator = _serviceProvider.GetRequiredService<PortAllocator>();
-            
-            // Use CLI override, config value, or default
+            // Create run plan with port allocation
             var configBasePort = config.Ports?.BasePort;
             var effectiveBasePort = basePort ?? configBasePort ?? 4723;
             var effectivePortOffset = config.Ports?.PortOffset ?? 10;
-            
-            
-            if (basePort.HasValue || config.Ports?.BasePort.HasValue == true)
-            {
-                portAllocator = new PortAllocator(effectiveBasePort, effectivePortOffset);
-            }
+            var portAllocator = new PortAllocator(effectiveBasePort, effectivePortOffset);
 
             var outputRoot = output?.FullName ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");
             
-            var runPlan = await runPlanBuilder.BuildAsync(
+            var runPlan = await _runPlanBuilder.BuildAsync(
                 config,
                 outputRoot,
                 platforms,
@@ -207,58 +196,29 @@ public class RunCommand : Command
                 portAllocator,
                 cancellationToken);
 
-            logger.LogInformation("Built run plan with {JobCount} jobs", runPlan.Jobs.Count);
+            _logger.LogInformation("Built run plan with {JobCount} jobs", runPlan.Jobs.Count);
 
             if (dryRun)
             {
-                PrintDryRunPlan(runPlan, logger);
+                PrintDryRunPlan(runPlan, _logger);
                 return 0;
             }
 
-            // Execute the plan with enhanced logger
-            var orchestrator = _serviceProvider.GetRequiredService<IOrchestrator>();
+            // Execute the plan - the orchestrator handles its own scoping for parallel jobs
+            var result = await _orchestrator.ExecuteAsync(runPlan, config, cliOverrides, cancellationToken);
             
-            // Update the orchestrator's logger if it supports enhanced logging
-            if (orchestrator is Orchestrator concreteOrchestrator)
-            {
-                // Create a new orchestrator instance with the enhanced logger
-                using var serviceScope = _serviceProvider.CreateScope();
-                
-                var enhancedOrchestrator = new Orchestrator(
-                    serviceScope.ServiceProvider,
-                    serviceScope.ServiceProvider.GetRequiredService<IAppiumServerController>(),
-                    serviceScope.ServiceProvider.GetRequiredService<ILogger<Orchestrator>>());
-                
-                var result = await enhancedOrchestrator.ExecuteAsync(runPlan, config, cliOverrides, cancellationToken);
-                
-                // Write manifest
-                var manifestWriter = _serviceProvider.GetRequiredService<IManifestWriter>();
-                var manifestFiles = await manifestWriter.WriteAsync(result, outputRoot, cancellationToken);
+            // Write manifest
+            var manifestFiles = await _manifestWriter.WriteAsync(result, outputRoot, cancellationToken);
 
-                logger.LogInformation("Run completed. Success: {Success}", result.Success);
-                logger.LogInformation("Manifest: {ManifestPath}", manifestFiles.ManifestJsonPath);
-                logger.LogInformation("Summary: {SummaryPath}", manifestFiles.SummaryTextPath);
+            _logger.LogInformation("Run completed. Success: {Success}", result.Success);
+            _logger.LogInformation("Manifest: {ManifestPath}", manifestFiles.ManifestJsonPath);
+            _logger.LogInformation("Summary: {SummaryPath}", manifestFiles.SummaryTextPath);
 
-                return result.Success ? 0 : 1;
-            }
-            else
-            {
-                var result = await orchestrator.ExecuteAsync(runPlan, config, cliOverrides, cancellationToken);
-                
-                // Write manifest
-                var manifestWriter = _serviceProvider.GetRequiredService<IManifestWriter>();
-                var manifestFiles = await manifestWriter.WriteAsync(result, outputRoot, cancellationToken);
-
-                logger.LogInformation("Run completed. Success: {Success}", result.Success);
-                logger.LogInformation("Manifest: {ManifestPath}", manifestFiles.ManifestJsonPath);
-                logger.LogInformation("Summary: {SummaryPath}", manifestFiles.SummaryTextPath);
-
-                return result.Success ? 0 : 1;
-            }
+            return result.Success ? 0 : 1;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Run failed with exception");
+            _logger.LogError(ex, "Run failed with exception");
             return 1;
         }
     }

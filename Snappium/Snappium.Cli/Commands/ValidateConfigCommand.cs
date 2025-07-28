@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 
@@ -8,11 +7,13 @@ namespace Snappium.Cli.Commands;
 
 public class ValidateConfigCommand : Command
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ConfigLoader _configLoader;
+    private readonly ILogger<ValidateConfigCommand> _logger;
 
-    public ValidateConfigCommand(IServiceProvider serviceProvider) : base("validate-config", "Validate configuration file")
+    public ValidateConfigCommand(ConfigLoader configLoader, ILogger<ValidateConfigCommand> logger) : base("validate-config", "Validate configuration file")
     {
-        _serviceProvider = serviceProvider;
+        _configLoader = configLoader;
+        _logger = logger;
 
         var configOption = new Option<FileInfo>(
             name: "--config",
@@ -42,21 +43,18 @@ public class ValidateConfigCommand : Command
         FileInfo? schemaFile,
         CancellationToken cancellationToken)
     {
-        var logger = _serviceProvider.GetRequiredService<ILogger<ValidateConfigCommand>>();
-        
         try
         {
             if (!configFile.Exists)
             {
-                logger.LogError("Configuration file not found: {ConfigPath}", configFile.FullName);
+                _logger.LogError("Configuration file not found: {ConfigPath}", configFile.FullName);
                 return 1;
             }
 
             // Load and validate configuration
-            var configLoader = _serviceProvider.GetRequiredService<ConfigLoader>();
-            var config = await configLoader.LoadAsync(configFile.FullName, schemaFile?.FullName, cancellationToken);
+            var config = await _configLoader.LoadAsync(configFile.FullName, schemaFile?.FullName, cancellationToken);
 
-            logger.LogInformation("Configuration loaded successfully from {ConfigPath}", configFile.FullName);
+            _logger.LogInformation("Configuration loaded successfully from {ConfigPath}", configFile.FullName);
 
             // Basic validation checks
             var validationErrors = new List<string>();
@@ -101,21 +99,21 @@ public class ValidateConfigCommand : Command
             {
                 if (!schemaFile.Exists)
                 {
-                    logger.LogError("Schema file not found: {SchemaPath}", schemaFile.FullName);
+                    _logger.LogError("Schema file not found: {SchemaPath}", schemaFile.FullName);
                     return 1;
                 }
 
                 // TODO: Implement JSON schema validation
-                logger.LogInformation("Schema validation not yet implemented");
+                _logger.LogInformation("Schema validation not yet implemented");
             }
 
             // Report results
             if (validationErrors.Count > 0)
             {
-                logger.LogError("Configuration validation failed with {ErrorCount} errors:", validationErrors.Count);
+                _logger.LogError("Configuration validation failed with {ErrorCount} errors:", validationErrors.Count);
                 foreach (var error in validationErrors)
                 {
-                    logger.LogError("  - {Error}", error);
+                    _logger.LogError("  - {Error}", error);
                 }
                 return 1;
             }
@@ -125,20 +123,20 @@ public class ValidateConfigCommand : Command
             var languageCount = config.Languages?.Count ?? 0;
             var screenshotCount = config.Screenshots?.Count ?? 0;
             
-            logger.LogInformation("✅ Configuration is valid");
-            logger.LogInformation("Summary: {DeviceCount} devices, {LanguageCount} languages, {ScreenshotCount} screenshots", 
+            _logger.LogInformation("✅ Configuration is valid");
+            _logger.LogInformation("Summary: {DeviceCount} devices, {LanguageCount} languages, {ScreenshotCount} screenshots", 
                 deviceCount, languageCount, screenshotCount);
 
             return 0;
         }
         catch (JsonException ex)
         {
-            logger.LogError("Invalid JSON format: {Error}", ex.Message);
+            _logger.LogError("Invalid JSON format: {Error}", ex.Message);
             return 1;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Configuration validation failed");
+            _logger.LogError(ex, "Configuration validation failed");
             return 1;
         }
     }

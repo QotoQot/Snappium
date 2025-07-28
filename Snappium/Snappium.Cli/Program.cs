@@ -22,11 +22,39 @@ class Program
         
         using var serviceProvider = services.BuildServiceProvider();
         
+        // Setup graceful shutdown handler to prevent zombie processes
+        var processManager = serviceProvider.GetRequiredService<ProcessManager>();
+        Console.CancelKeyPress += (sender, eventArgs) =>
+        {
+            Console.WriteLine("\nCancellation requested. Shutting down managed processes...");
+            try
+            {
+                // Perform synchronous cleanup - ProcessManager.Dispose() handles async cleanup internally
+                processManager.Dispose();
+                Console.WriteLine("Process cleanup completed.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Error during process cleanup: {ex.Message}");
+            }
+            eventArgs.Cancel = false; // Allow the process to terminate
+        };
+        
         var rootCommand = new RootCommand("Snappium - Screenshot automation for mobile apps")
         {
-            new RunCommand(serviceProvider),
-            new ValidateConfigCommand(serviceProvider),
-            new GenerateMatrixCommand(serviceProvider)
+            new RunCommand(
+                serviceProvider.GetRequiredService<IOrchestrator>(),
+                serviceProvider.GetRequiredService<ConfigLoader>(),
+                serviceProvider.GetRequiredService<RunPlanBuilder>(),
+                serviceProvider.GetRequiredService<IManifestWriter>(),
+                serviceProvider.GetRequiredService<ILogger<RunCommand>>()),
+            new ValidateConfigCommand(
+                serviceProvider.GetRequiredService<ConfigLoader>(),
+                serviceProvider.GetRequiredService<ILogger<ValidateConfigCommand>>()),
+            new GenerateMatrixCommand(
+                serviceProvider.GetRequiredService<ConfigLoader>(),
+                serviceProvider.GetRequiredService<RunPlanBuilder>(),
+                serviceProvider.GetRequiredService<ILogger<GenerateMatrixCommand>>())
         };
 
         return await rootCommand.InvokeAsync(args);
@@ -88,7 +116,6 @@ class Program
         services.AddSingleton<IOrchestrator, Orchestrator>();
         services.AddSingleton<IManifestWriter, ManifestWriter>();
         
-        // Port allocator as scoped since it maintains state
-        services.AddScoped<PortAllocator>(provider => new PortAllocator(4723, 10));
+        // Note: PortAllocator is now created locally in each command with appropriate configuration
     }
 }
