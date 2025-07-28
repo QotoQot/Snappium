@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
+using Snappium.Core.Config;
 using Snappium.Core.Infrastructure;
 
 namespace Snappium.Core.Build;
@@ -115,7 +116,7 @@ public sealed class DependencyChecker : IDependencyChecker
             var result = await _commandRunner.RunAsync(
                 command,
                 args,
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             if (result.ExitCode == 0)

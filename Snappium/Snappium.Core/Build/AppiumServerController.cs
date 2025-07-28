@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Snappium.Core.Config;
 using Snappium.Core.Infrastructure;
 
 namespace Snappium.Core.Build;
@@ -355,7 +356,7 @@ public sealed class AppiumServerController : IAppiumServerController
             var netstatResult = await _commandRunner.RunAsync(
                 "netstat",
                 ["-ano"],
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             if (netstatResult.ExitCode != 0)
@@ -374,7 +375,7 @@ public sealed class AppiumServerController : IAppiumServerController
                         var killResult = await _commandRunner.RunAsync(
                             "taskkill",
                             ["/F", "/PID", pid.ToString()],
-                            timeout: TimeSpan.FromSeconds(10),
+                            timeout: Defaults.Timeouts.ShortOperation,
                             cancellationToken: cancellationToken);
 
                         return killResult.ExitCode == 0;
@@ -399,7 +400,7 @@ public sealed class AppiumServerController : IAppiumServerController
             var lsofResult = await _commandRunner.RunAsync(
                 "lsof",
                 ["-t", $"-i:{port}"],
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             if (lsofResult.ExitCode != 0 || string.IsNullOrWhiteSpace(lsofResult.StandardOutput))
@@ -415,7 +416,7 @@ public sealed class AppiumServerController : IAppiumServerController
                     var killResult = await _commandRunner.RunAsync(
                         "kill",
                         ["-9", pid.ToString()],
-                        timeout: TimeSpan.FromSeconds(10),
+                        timeout: Defaults.Timeouts.ShortOperation,
                         cancellationToken: cancellationToken);
 
                     if (killResult.ExitCode != 0)
@@ -468,7 +469,7 @@ public sealed class AppiumServerController : IAppiumServerController
         {
             // Stop all managed servers synchronously during disposal
             var stopTask = StopAllServersAsync(CancellationToken.None);
-            if (!stopTask.Wait(TimeSpan.FromSeconds(10)))
+            if (!stopTask.Wait(Defaults.Timeouts.ShortOperation))
             {
                 _logger.LogWarning("Timeout waiting for servers to stop during disposal");
             }

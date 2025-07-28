@@ -62,7 +62,7 @@ public class CliCommandTests
         services.AddSingleton<IManifestWriter, ManifestWriter>();
         
         // Port allocator as scoped since it maintains state
-        services.AddScoped<PortAllocator>(provider => new PortAllocator(4723, 10));
+        services.AddScoped<PortAllocator>(provider => new PortAllocator(Defaults.Ports.AppiumBasePort, Defaults.Ports.PortOffset));
     }
 
     [Test]

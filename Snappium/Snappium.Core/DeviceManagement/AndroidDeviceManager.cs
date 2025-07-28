@@ -23,7 +23,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     public async Task<string> StartEmulatorAsync(string avdName, CancellationToken cancellationToken = default)
     {
         // Use default port range
-        return await StartEmulatorAsync(avdName, 5554, 5600, cancellationToken);
+        return await StartEmulatorAsync(avdName, Defaults.Ports.EmulatorStartPort, Defaults.Ports.EmulatorEndPort, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -67,7 +67,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         var emulatorTask = _commandRunner.RunAsync(
             GetEmulatorCommand(),
             args.ToArray(),
-            timeout: TimeSpan.FromMinutes(10),
+            timeout: Defaults.Timeouts.BuildOperation,
             cancellationToken: cancellationToken);
 
         // Wait a bit for the emulator to start up
@@ -351,7 +351,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             var result = await _commandRunner.RunAsync(
                 "adb",
                 ["devices"],
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             if (result.IsSuccess && !result.StandardOutput.Contains($"emulator-{port}"))
@@ -371,7 +371,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             var result = await _commandRunner.RunAsync(
                 "adb",
                 ["devices"],
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             return result.IsSuccess && result.StandardOutput.Contains(emulatorSerial);
@@ -390,7 +390,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             var result = await RunAdbCommandAsync(
                 deviceSerial,
                 ["shell", "getprop", "sys.boot_completed"],
-                timeout: TimeSpan.FromSeconds(10),
+                timeout: Defaults.Timeouts.ShortOperation,
                 cancellationToken: cancellationToken);
 
             return result.IsSuccess && result.StandardOutput.Trim() == "1";

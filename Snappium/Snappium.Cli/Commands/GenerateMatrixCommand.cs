@@ -103,8 +103,8 @@ public class GenerateMatrixCommand : Command
             _logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
 
             // Create run plan with port allocation
-            var configBasePort = config.Ports?.BasePort ?? 4723;
-            var effectivePortOffset = config.Ports?.PortOffset ?? 10;
+            var configBasePort = config.Ports?.BasePort ?? Defaults.Ports.AppiumBasePort;
+            var effectivePortOffset = config.Ports?.PortOffset ?? Defaults.Ports.PortOffset;
             var portAllocator = new PortAllocator(configBasePort, effectivePortOffset);
             
             var outputRoot = output?.FullName ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");

@@ -45,7 +45,7 @@ public sealed class RunPlanBuilder
             languageFilter?.Length > 0 ? string.Join(",", languageFilter) : "all",
             screenshotFilter?.Length > 0 ? string.Join(",", screenshotFilter) : "all");
 
-        portAllocator ??= new PortAllocator(config.Ports?.BasePort ?? 4723, config.Ports?.PortOffset ?? 10);
+        portAllocator ??= new PortAllocator(config.Ports?.BasePort ?? Defaults.Ports.AppiumBasePort, config.Ports?.PortOffset ?? Defaults.Ports.PortOffset);
 
         var jobs = new List<RunJob>();
         var artifactPaths = await ResolveArtifactPathsAsync(config, cancellationToken);

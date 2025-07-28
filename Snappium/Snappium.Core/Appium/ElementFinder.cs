@@ -13,7 +13,7 @@ namespace Snappium.Core.Appium;
 public sealed class ElementFinder : IElementFinder
 {
     private readonly ILogger<ElementFinder> _logger;
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultTimeout = Defaults.Timeouts.ElementOperation;
 
     public ElementFinder(ILogger<ElementFinder> logger)
     {

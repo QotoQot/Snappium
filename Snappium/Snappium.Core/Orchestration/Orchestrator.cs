@@ -56,7 +56,7 @@ public sealed class Orchestrator : IOrchestrator
             var concurrentJobResults = new ConcurrentBag<JobResult>();
             
             // Determine max concurrency based on job count and available resources
-            var maxConcurrency = CalculateOptimalConcurrency(runPlan.Jobs.Count);
+            var maxConcurrency = Defaults.Concurrency.CalculateOptimalConcurrency(runPlan.Jobs.Count);
             _logger.LogInformation("Executing {JobCount} jobs with max concurrency of {MaxConcurrency}", 
                 runPlan.Jobs.Count, maxConcurrency);
 
@@ -142,25 +142,6 @@ public sealed class Orchestrator : IOrchestrator
         return _serviceProvider.CreateScope();
     }
 
-    /// <summary>
-    /// Calculates optimal concurrency level based on job count and system resources.
-    /// Balances performance with resource constraints (CPU, memory, device limits).
-    /// </summary>
-    private static int CalculateOptimalConcurrency(int jobCount)
-    {
-        if (jobCount <= 1)
-            return 1;
-
-        // Base concurrency on logical processor count, but cap it for resource management
-        var processorCount = Environment.ProcessorCount;
-        
-        // For screenshot automation, each job uses significant resources (emulators, drivers, etc.)
-        // So we use a more conservative concurrency level than CPU-bound tasks
-        var maxConcurrency = Math.Max(1, processorCount / 2);
-        
-        // Don't exceed the number of jobs we actually have
-        return Math.Min(maxConcurrency, jobCount);
-    }
 
     private static EnvironmentInfo GetEnvironmentInfo()
     {

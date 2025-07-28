@@ -241,8 +241,8 @@ public sealed class JobExecutor : IJobExecutor
         else if (job.Platform == Platform.Android && job.AndroidDevice != null)
         {
             // Android preparation sequence
-            var emulatorStartPort = config.Ports?.EmulatorStartPort ?? 5554;
-            var emulatorEndPort = config.Ports?.EmulatorEndPort ?? 5600;
+            var emulatorStartPort = config.Ports?.EmulatorStartPort ?? Defaults.Ports.EmulatorStartPort;
+            var emulatorEndPort = config.Ports?.EmulatorEndPort ?? Defaults.Ports.EmulatorEndPort;
             var deviceSerial = await _androidDeviceManager.StartEmulatorAsync(job.AndroidDevice.Avd, emulatorStartPort, emulatorEndPort, cancellationToken);
             await _androidDeviceManager.WaitForBootAsync(deviceSerial, timeout: null, cancellationToken);
             await _androidDeviceManager.SetLanguageAsync(deviceSerial, job.Language, job.LocaleMapping, cancellationToken);

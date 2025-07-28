@@ -1,4 +1,5 @@
 using Snappium.Core.Abstractions;
+using Snappium.Core.Config;
 
 namespace Snappium.Core.Planning;
 
@@ -15,16 +16,16 @@ public sealed class PortAllocator
     /// </summary>
     /// <param name="basePort">Base port to start allocation from</param>
     /// <param name="portOffset">Offset between each job's port range</param>
-    public PortAllocator(int basePort = 4723, int portOffset = 10)
+    public PortAllocator(int basePort = Defaults.Ports.AppiumBasePort, int portOffset = Defaults.Ports.PortOffset)
     {
-        if (basePort < 1024 || basePort > 65535)
+        if (basePort < Defaults.Ports.MinPortNumber || basePort > Defaults.Ports.MaxPortNumber)
         {
-            throw new ArgumentOutOfRangeException(nameof(basePort), "Base port must be between 1024 and 65535");
+            throw new ArgumentOutOfRangeException(nameof(basePort), $"Base port must be between {Defaults.Ports.MinPortNumber} and {Defaults.Ports.MaxPortNumber}");
         }
 
-        if (portOffset < 1 || portOffset > 100)
+        if (portOffset < 1 || portOffset > Defaults.Ports.MaxPortOffset)
         {
-            throw new ArgumentOutOfRangeException(nameof(portOffset), "Port offset must be between 1 and 100");
+            throw new ArgumentOutOfRangeException(nameof(portOffset), $"Port offset must be between 1 and {Defaults.Ports.MaxPortOffset}");
         }
 
         _basePort = basePort;
@@ -46,7 +47,7 @@ public sealed class PortAllocator
         var jobPortBase = _basePort + (jobIndex * _portOffset);
 
         // Ensure we don't exceed port range
-        if (jobPortBase + _portOffset > 65535)
+        if (jobPortBase + _portOffset > Defaults.Ports.MaxPortNumber)
         {
             throw new InvalidOperationException($"Port allocation would exceed maximum port number. Job index {jobIndex} with base {_basePort} and offset {_portOffset}");
         }

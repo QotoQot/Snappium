@@ -180,8 +180,8 @@ public class RunCommand : Command
 
             // Create run plan with port allocation
             var configBasePort = config.Ports?.BasePort;
-            var effectiveBasePort = basePort ?? configBasePort ?? 4723;
-            var effectivePortOffset = config.Ports?.PortOffset ?? 10;
+            var effectiveBasePort = basePort ?? configBasePort ?? Defaults.Ports.AppiumBasePort;
+            var effectivePortOffset = config.Ports?.PortOffset ?? Defaults.Ports.PortOffset;
             var portAllocator = new PortAllocator(effectiveBasePort, effectivePortOffset);
 
             var outputRoot = output?.FullName ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");

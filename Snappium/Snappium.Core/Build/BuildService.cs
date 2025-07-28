@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Abstractions;
+using Snappium.Core.Config;
 using Snappium.Core.Infrastructure;
 
 namespace Snappium.Core.Build;
@@ -63,7 +64,7 @@ public sealed class BuildService : IBuildService
             var result = await _commandRunner.RunAsync(
                 "dotnet",
                 [.. args],
-                timeout: TimeSpan.FromMinutes(10),
+                timeout: Defaults.Timeouts.BuildOperation,
                 cancellationToken: cancellationToken);
 
             stopwatch.Stop();

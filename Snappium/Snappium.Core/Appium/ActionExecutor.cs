@@ -164,7 +164,7 @@ public sealed class ActionExecutor : IActionExecutor
         try
         {
             var element = await _elementFinder.FindElementAsync(
-                driver, selector, TimeSpan.FromSeconds(10), cancellationToken);
+                driver, selector, Defaults.Timeouts.ElementOperation, cancellationToken);
             
             _logger.LogDebug("Assertion validated - element found");
             return true;
@@ -208,7 +208,7 @@ public sealed class ActionExecutor : IActionExecutor
         // Handle wait_for action
         if (action.WaitFor != null)
         {
-            var timeout = TimeSpan.FromSeconds(action.WaitFor.Timeout ?? 10);
+            var timeout = TimeSpan.FromSeconds(action.WaitFor.Timeout ?? (int)Defaults.Timeouts.ElementOperation.TotalSeconds);
             var found = await _elementFinder.WaitForElementAsync(
                 driver, action.WaitFor.Selector, timeout, cancellationToken);
             
