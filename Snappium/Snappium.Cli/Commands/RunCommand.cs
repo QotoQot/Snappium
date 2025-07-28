@@ -223,17 +223,11 @@ public class RunCommand : Command
             {
                 // Create a new orchestrator instance with the enhanced logger
                 using var serviceScope = _serviceProvider.CreateScope();
+                
                 var enhancedOrchestrator = new Orchestrator(
-                    serviceScope.ServiceProvider.GetRequiredService<IDriverFactory>(),
-                    serviceScope.ServiceProvider.GetRequiredService<IActionExecutor>(),
-                    serviceScope.ServiceProvider.GetRequiredService<IImageValidator>(),
-                    serviceScope.ServiceProvider.GetRequiredService<IIosDeviceManager>(),
-                    serviceScope.ServiceProvider.GetRequiredService<IAndroidDeviceManager>(),
-                    serviceScope.ServiceProvider.GetRequiredService<IBuildService>(),
+                    serviceScope.ServiceProvider,
                     serviceScope.ServiceProvider.GetRequiredService<IAppiumServerController>(),
-                    serviceScope.ServiceProvider.GetRequiredService<PortAllocator>(),
-                    serviceScope.ServiceProvider.GetRequiredService<ILogger<Orchestrator>>(),
-                    snappiumLogger);
+                    serviceScope.ServiceProvider.GetRequiredService<ILogger<Orchestrator>>());
                 
                 var result = await enhancedOrchestrator.ExecuteAsync(runPlan, config, cliOverrides, cancellationToken);
                 

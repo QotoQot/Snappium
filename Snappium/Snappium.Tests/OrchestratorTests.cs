@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenQA.Selenium.Appium;
@@ -15,43 +16,34 @@ namespace Snappium.Tests;
 [TestFixture]
 public class OrchestratorTests
 {
-    private Mock<IDriverFactory> _driverFactoryMock = null!;
-    private Mock<IActionExecutor> _actionExecutorMock = null!;
-    private Mock<IImageValidator> _imageValidatorMock = null!;
-    private Mock<IIosDeviceManager> _iosDeviceManagerMock = null!;
-    private Mock<IAndroidDeviceManager> _androidDeviceManagerMock = null!;
-    private Mock<IBuildService> _buildServiceMock = null!;
+    private IServiceProvider _serviceProvider = null!;
+    private Mock<IJobExecutor> _jobExecutorMock = null!;
     private Mock<IAppiumServerController> _appiumServerControllerMock = null!;
     private Mock<ILogger<Orchestrator>> _loggerMock = null!;
-    private Mock<ISnappiumLogger> _snappiumLoggerMock = null!;
-    private PortAllocator _portAllocator = null!;
     private Orchestrator _orchestrator = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _driverFactoryMock = new Mock<IDriverFactory>();
-        _actionExecutorMock = new Mock<IActionExecutor>();
-        _imageValidatorMock = new Mock<IImageValidator>();
-        _iosDeviceManagerMock = new Mock<IIosDeviceManager>();
-        _androidDeviceManagerMock = new Mock<IAndroidDeviceManager>();
-        _buildServiceMock = new Mock<IBuildService>();
+        _jobExecutorMock = new Mock<IJobExecutor>();
         _appiumServerControllerMock = new Mock<IAppiumServerController>();
         _loggerMock = new Mock<ILogger<Orchestrator>>();
-        _snappiumLoggerMock = new Mock<ISnappiumLogger>();
-        _portAllocator = new PortAllocator(4723, 10);
+
+        // Create a real service collection with mocked services
+        var services = new ServiceCollection();
+        services.AddScoped<IJobExecutor>(_ => _jobExecutorMock.Object);
+        _serviceProvider = services.BuildServiceProvider();
 
         _orchestrator = new Orchestrator(
-            _driverFactoryMock.Object,
-            _actionExecutorMock.Object,
-            _imageValidatorMock.Object,
-            _iosDeviceManagerMock.Object,
-            _androidDeviceManagerMock.Object,
-            _buildServiceMock.Object,
+            _serviceProvider,
             _appiumServerControllerMock.Object,
-            _portAllocator,
-            _loggerMock.Object,
-            _snappiumLoggerMock.Object);
+            _loggerMock.Object);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        (_serviceProvider as IDisposable)?.Dispose();
     }
 
     [Test]
@@ -97,38 +89,26 @@ public class OrchestratorTests
         };
         var config = CreateMinimalConfig();
 
-        // Mock device manager calls
-        _iosDeviceManagerMock
-            .Setup(x => x.ShutdownAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _iosDeviceManagerMock
-            .Setup(x => x.SetLanguageAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<LocaleMapping>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _iosDeviceManagerMock
-            .Setup(x => x.BootAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        _iosDeviceManagerMock
-            .Setup(x => x.InstallAppAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        // Mock driver creation - return null since we're not actually using the driver in this test
-        _driverFactoryMock
-            .Setup(x => x.CreateDriverAsync(It.IsAny<RunJob>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((AppiumDriver)null!);
-
-        // Mock action executor
-        _actionExecutorMock
-            .Setup(x => x.ExecuteAsync(It.IsAny<AppiumDriver>(), It.IsAny<RunJob>(), It.IsAny<string>(),
-                It.IsAny<ScreenshotPlan>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<ScreenshotResult>
+        // Mock job executor
+        _jobExecutorMock
+            .Setup(x => x.ExecuteAsync(It.IsAny<RunJob>(), It.IsAny<RootConfig>(), It.IsAny<CliOverrides>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new JobResult
             {
-                new ScreenshotResult
+                Job = job,
+                Status = JobStatus.Success,
+                StartTime = DateTimeOffset.UtcNow.AddMinutes(-1),
+                EndTime = DateTimeOffset.UtcNow,
+                Screenshots = new List<ScreenshotResult>
                 {
-                    Name = "test",
-                    Path = "/tmp/test.png",
-                    Timestamp = DateTimeOffset.UtcNow,
-                    Success = true
-                }
+                    new ScreenshotResult
+                    {
+                        Name = "test",
+                        Path = "/tmp/test.png",
+                        Timestamp = DateTimeOffset.UtcNow,
+                        Success = true
+                    }
+                },
+                FailureArtifacts = new List<FailureArtifact>()
             });
 
         // Act

@@ -206,6 +206,7 @@ public class ScreenshotAutomationTests
         
         // Planning and orchestration
         services.AddSingleton<RunPlanBuilder>();
+        services.AddScoped<IJobExecutor, JobExecutor>(); // Scoped to enable parallel job isolation
         services.AddSingleton<IOrchestrator, Orchestrator>();
         services.AddSingleton<IManifestWriter, ManifestWriter>();
         
