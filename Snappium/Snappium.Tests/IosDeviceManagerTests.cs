@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Infrastructure;
+using Snappium.Tests.TestHelpers;
 using System.Text.Json;
 
 namespace Snappium.Tests;
@@ -10,7 +11,7 @@ namespace Snappium.Tests;
 public class IosDeviceManagerTests
 {
     private IosDeviceManager _deviceManager = null!;
-    private TestCommandRunner _commandRunner = null!;
+    private MockCommandRunner _commandRunner = null!;
     private ILogger<IosDeviceManager> _logger = null!;
 
     [SetUp]
@@ -18,7 +19,7 @@ public class IosDeviceManagerTests
     {
         var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
         _logger = loggerFactory.CreateLogger<IosDeviceManager>();
-        _commandRunner = new TestCommandRunner();
+        _commandRunner = new MockCommandRunner();
         _deviceManager = new IosDeviceManager(_commandRunner, _logger);
     }
 
@@ -99,68 +100,4 @@ public class IosDeviceManagerTests
     }
 
     // Helper class to mock ICommandRunner for testing
-    private class TestCommandRunner : ICommandRunner
-    {
-        public List<ExecutedCommand> ExecutedCommands { get; } = new();
-        private readonly Dictionary<string, CommandResult> _setupCommands = new();
-
-        public void SetupCommand(string command, string[] arguments, int exitCode = 0, string stdout = "", string stderr = "")
-        {
-            var key = $"{command}|{string.Join("|", arguments)}";
-            _setupCommands[key] = new CommandResult
-            {
-                ExitCode = exitCode,
-                StandardOutput = stdout,
-                StandardError = stderr,
-                ExecutionTime = TimeSpan.FromMilliseconds(100)
-            };
-        }
-
-        public void SetupCommand(string command, Func<string[], bool> argumentMatcher, int exitCode = 0, string stdout = "", string stderr = "")
-        {
-            var key = $"{command}|matcher";
-            _setupCommands[key] = new CommandResult
-            {
-                ExitCode = exitCode,
-                StandardOutput = stdout,
-                StandardError = stderr,
-                ExecutionTime = TimeSpan.FromMilliseconds(100)
-            };
-        }
-
-        public Task<CommandResult> RunAsync(string command, string[]? arguments = null, string? workingDirectory = null, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
-        {
-            arguments ??= [];
-            ExecutedCommands.Add(new ExecutedCommand(command, arguments, workingDirectory));
-
-            var key = $"{command}|{string.Join("|", arguments)}";
-            if (_setupCommands.TryGetValue(key, out var result))
-            {
-                return Task.FromResult(result);
-            }
-
-            // Try matcher-based setup
-            var matcherKey = $"{command}|matcher";
-            if (_setupCommands.TryGetValue(matcherKey, out var matcherResult))
-            {
-                return Task.FromResult(matcherResult);
-            }
-
-            // Default success response
-            return Task.FromResult(new CommandResult
-            {
-                ExitCode = 0,
-                StandardOutput = "",
-                StandardError = "",
-                ExecutionTime = TimeSpan.FromMilliseconds(100)
-            });
-        }
-
-        public Task<CommandResult> RunWithRetryAsync(string command, string[]? arguments = null, string? workingDirectory = null, TimeSpan? timeout = null, int retryCount = 3, TimeSpan? retryDelay = null, CancellationToken cancellationToken = default)
-        {
-            return RunAsync(command, arguments, workingDirectory, timeout, cancellationToken);
-        }
-    }
-
-    public record ExecutedCommand(string Command, string[] Arguments, string? WorkingDirectory);
 }
