@@ -40,17 +40,18 @@ Ensure you have the following tools installed:
 
 ### Install Snappium
 
-Install Snappium as a global .NET tool:
+Clone the repository and install from source:
 
 ```bash
-dotnet tool install --global Snappium.Cli
-```
+# Clone the repository
+git clone https://github.com/QotoQot/Snappium.git
+cd Snappium
 
-Or install locally in your project:
+# Pack the CLI tool
+dotnet pack Snappium/Snappium.Cli/ -c Release
 
-```bash
-dotnet new tool-manifest  # if you don't have one already
-dotnet tool install --local Snappium.Cli
+# Install globally from local source
+dotnet tool install --global --add-source ./Snappium/Snappium.Cli/bin/Release Snappium.Cli
 ```
 
 Verify installation:
