@@ -10,7 +10,6 @@ This document provides a comprehensive overview of the Snappium architecture, ex
 - [Entry Points & CLI](#entry-points--cli)
 - [Configuration & Planning](#configuration--planning)
 - [Device Management](#device-management)
-- [Build & Deployment](#build--deployment)
 - [Appium Integration](#appium-integration)
 - [Screenshot Execution](#screenshot-execution)
 - [Verification & Validation](#verification--validation)
@@ -28,9 +27,11 @@ Snappium is a cross-platform screenshot automation system that coordinates multi
 - **Orchestration-Driven**: Central orchestrator coordinates all processes with job-level isolation
 - **Platform-Agnostic**: Unified interface for iOS and Android operations with stateless device managers
 - **Action-Based Configuration**: Flexible navigation through configurable actions
+- **Artifact-Based Deployment**: Uses pre-built app artifacts instead of building from source
 - **Failure-Resilient**: Comprehensive error handling, artifact collection, and process cleanup
 - **Tool Integration**: Seamless coordination of external tools (Xcode, Android SDK, Appium)
 - **Sequential Execution**: Jobs executed one at a time to prevent device conflicts and ensure reliable execution
+- **Fresh App State**: Apps are always reinstalled between runs for consistent state
 
 ## System Architecture
 
@@ -58,11 +59,11 @@ Snappium is a cross-platform screenshot automation system that coordinates multi
       ▼     ▼     ▼     ▼     ▼     ▼     ▼     ▼     ▼     ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    Service Layer                                 │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐ │
-│ │  iOS    │ │ Android │ │  Build  │ │ Appium  │ │   Action    │ │
-│ │ Device  │ │ Device  │ │ Service │ │ Server  │ │  Executor   │ │
-│ │ Manager │ │ Manager │ │         │ │ Control │ │             │ │
-│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────────┘ │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐ │
+│ │  iOS    │ │ Android │ │ Appium  │ │   Action    │ │
+│ │ Device  │ │ Device  │ │ Server  │ │  Executor   │ │
+│ │ Manager │ │ Manager │ │ Control │ │             │ │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────────┘ │
 │ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐ │
 │ │ Element │ │  Image  │ │Manifest │ │ Command │ │   Logging   │ │
 │ │ Finder  │ │Validator│ │ Writer  │ │ Runner  │ │   System    │ │
@@ -72,10 +73,10 @@ Snappium is a cross-platform screenshot automation system that coordinates multi
                                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                   External Tools                                │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐ │
-│ │ simctl  │ │   adb   │ │ emulator│ │ dotnet  │ │   appium    │ │
-│ │         │ │         │ │         │ │  build  │ │   server    │ │
-│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────────┘ │
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────┐ │
+│ │ simctl  │ │   adb   │ │ emulator│ │   appium    │ │
+│ │         │ │         │ │         │ │   server    │ │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -135,7 +136,7 @@ public async Task<RunResult> ExecuteAsync(
 **Orchestrator Responsibilities**:
 1. **Job Execution**: Processes jobs sequentially with complete device isolation between jobs
 2. **Device Coordination**: Manages iOS simulators and Android emulators with stateless device managers
-3. **Build Management**: Coordinates app building and installation
+3. **Artifact Management**: Locates and installs pre-built app artifacts
 4. **Appium Lifecycle**: Manages server and driver creation with automatic cleanup
 5. **Process Management**: Ensures proper cleanup of all managed processes (servers, emulators, simulators)
 6. **Failure Handling**: Captures comprehensive artifacts including device logs
@@ -195,9 +196,8 @@ snappium run \
   --platforms ios,android \        # Filter: only these platforms
   --devices iPhone15,Pixel7 \      # Filter: only these devices
   --langs en-US,es-ES \           # Filter: only these languages
-  --build never \                 # Override: skip building
-  --ios-app path/to/iOS.app \     # Override: use pre-built iOS app
-  --android-app path/to/app.apk \ # Override: use pre-built Android app
+  --ios-app path/to/iOS.app \     # Override: use specific iOS app
+  --android-app path/to/app.apk \ # Override: use specific Android app
   --output ./Screenshots \        # Override: custom output directory
   --base-port 4724 \             # Override: custom Appium port
 ```
@@ -241,7 +241,7 @@ public class RunJob
     public AndroidDevice? AndroidDevice { get; init; } // Device config
     public List<ScreenshotPlan> Screenshots { get; init; } // Actions to execute
     public string OutputDirectory { get; init; }      // Where to save files
-    public string AppPath { get; init; }              // Path to app binary
+    public string AppPath { get; init; }              // Path to app artifact
     public LocaleMapping LocaleMapping { get; init; } // Platform-specific locales
 }
 ```
@@ -264,7 +264,7 @@ public interface IIosDeviceManager
     Task SetLanguageAsync(string language, LocaleMapping localeMapping, CancellationToken cancellationToken);
     Task SetStatusBarAsync(string deviceId, IosStatusBarConfig statusBar, CancellationToken cancellationToken);
     Task InstallAppAsync(string appPath, CancellationToken cancellationToken);
-    Task ResetAppDataAsync(string appPath, CancellationToken cancellationToken);
+    Task UninstallAppAsync(string deviceIdentifier, string bundleId, CancellationToken cancellationToken);
     Task TakeScreenshotAsync(string outputPath, CancellationToken cancellationToken);
     Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken);
     Dictionary<string, object> GetCapabilities(IosDevice device, string appPath);
@@ -280,8 +280,8 @@ simctl boot "iPhone 15"                        # Start simulator
 simctl status_bar "iPhone 15" override --time "9:41" # Demo status bar
 
 # App management  
+simctl uninstall booted com.bundle.id          # Uninstall app (fresh state)
 simctl install booted path/to/iOS.app          # Install app
-simctl launch booted com.bundle.id             # Launch app (if needed)
 
 # Screenshot capture
 simctl io booted screenshot output.png         # Capture screenshot
@@ -302,7 +302,7 @@ public interface IAndroidDeviceManager
     Task SetLanguageAsync(string language, LocaleMapping localeMapping, CancellationToken cancellationToken);
     Task SetStatusBarDemoModeAsync(AndroidStatusBarConfig statusBar, CancellationToken cancellationToken);
     Task InstallAppAsync(string appPath, CancellationToken cancellationToken);
-    Task ResetAppDataAsync(string packageName, CancellationToken cancellationToken);
+    Task UninstallAppAsync(string packageName, CancellationToken cancellationToken);
     Task TakeScreenshotAsync(string deviceSerial, string outputPath, CancellationToken cancellationToken);
     Task<string> CaptureLogsAsync(string deviceIdentifier, CancellationToken cancellationToken);
     Task StopEmulatorAsync(string deviceSerial, CancellationToken cancellationToken);
@@ -324,8 +324,8 @@ adb shell am broadcast -a com.android.systemui.demo \
   -e command clock -e hhmm 1200                 # Set clock
 
 # App management
-adb install -r path/to/app.apk                  # Install app
-adb shell pm clear com.package.name            # Clear app data
+adb uninstall com.package.name                  # Uninstall app (fresh state)
+adb install path/to/app.apk                     # Install app
 
 # Screenshot capture
 adb shell screencap -p /sdcard/screenshot.png  # Capture screenshot
@@ -399,68 +399,73 @@ public sealed class ProcessManager : IDisposable
 
 The CLI implements graceful shutdown through `Console.CancelKeyPress` handler in `Program.cs`, ensuring all managed processes are properly cleaned up even when users interrupt execution with Ctrl+C.
 
-## Build & Deployment
+## Artifact Management
 
-### Build Service
+### Artifact Discovery
 
-**Location**: `Snappium.Core/Build/BuildService.cs`
+**Location**: `Snappium.Core/Planning/RunPlanBuilder.cs` (`ResolveGlobPatternAsync`)
 
-Coordinates application building across platforms:
+Locates pre-built application artifacts using configured glob patterns:
 
 ```csharp
-public interface IBuildService
+private async Task<string?> ResolveGlobPatternAsync(string pattern, CancellationToken cancellationToken)
 {
-    Task<BuildResult> BuildAsync(
-        Platform platform,
-        string projectPath,
-        string configuration = "Release",
-        string? targetFramework = null,
-        CancellationToken cancellationToken = default);
+    // Supports both files (.apk) and directories (.app bundles)
+    var regex = new Regex(wildcardToRegex(Path.GetFileName(pattern)), RegexOptions.IgnoreCase);
+    
+    var files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
+        .Where(f => regex.IsMatch(Path.GetFileName(f)))
+        .ToArray();
         
-    Task<string?> DiscoverArtifactAsync(string searchPattern, string searchDirectory);
+    var directories = Directory.GetDirectories(directory, "*", SearchOption.AllDirectories)
+        .Where(d => regex.IsMatch(Path.GetFileName(d)))
+        .ToArray();
+        
+    var allMatches = directories.Concat(files).ToArray();
+    return allMatches.FirstOrDefault();
 }
 ```
 
-**Build Flow**:
+**Artifact Configuration**:
 
-1. **iOS Build**:
-   ```bash
-   dotnet build iOS/iOS.csproj -c Release -f net9.0-ios
-   # Discovers: iOS/bin/Release/net9.0-ios/iOS.app
-   ```
-
-2. **Android Build**:
-   ```bash
-   dotnet build Droid/Droid.csproj -c Release -f net9.0-android  
-   # Discovers: Droid/bin/Release/net9.0-android/com.app.apk
-   ```
-
-3. **Artifact Discovery**:
-   - Uses glob patterns to find build outputs
-   - Validates artifact existence and accessibility
-   - Returns absolute paths for installation
+```json
+{
+  "Artifacts": {
+    "Ios": {
+      "ArtifactGlob": "iOS/bin/Release/net9.0-ios/iossimulator-arm64/iOS.app",
+      "Package": "com.example.app"
+    },
+    "Android": {
+      "ArtifactGlob": "Droid/bin/Release/net9.0-android/*.apk",
+      "Package": "com.example.app"
+    }
+  }
+}
+```
 
 ### App Installation Flow
 
 ```
-Build → Artifact Discovery → Platform-Specific Installation
+Artifact Discovery → Fresh Installation → Platform-Specific Setup
 ```
 
-**iOS Installation**:
+**iOS Installation** (with fresh state):
 ```bash
-simctl install booted path/to/iOS.app
+simctl uninstall booted com.bundle.id    # Remove previous installation
+simctl install booted path/to/iOS.app    # Install fresh copy
 ```
 
-**Android Installation**:
+**Android Installation** (with fresh state):
 ```bash
-adb install -r path/to/app.apk
+adb uninstall com.package.name           # Remove previous installation
+adb install path/to/app.apk             # Install fresh copy
 ```
 
 ## Appium Integration
 
 ### Appium Server Management
 
-**Location**: `Snappium.Core/Appium/AppiumServerController.cs`
+**Location**: `Snappium.Core/Infrastructure/AppiumServerController.cs`
 
 Manages Appium server lifecycle:
 
@@ -836,7 +841,7 @@ sequenceDiagram
     participant Planner as RunPlanBuilder
     participant Orch as Orchestrator
     participant DevMgr as DeviceManager
-    participant Build as BuildService
+    participant Artifact as ArtifactResolver
     participant Appium as AppiumDriver
     participant Action as ActionExecutor
     
@@ -855,10 +860,10 @@ sequenceDiagram
         DevMgr->>DevMgr: Shutdown/language/boot
         DevMgr-->>Orch: Device ready
         
-        Orch->>Build: Build & install app
-        Build->>Build: Compile & discover
-        Build->>DevMgr: Install on device
-        Build-->>Orch: App installed
+        Orch->>Artifact: Locate & install app
+        Artifact->>Artifact: Discover artifact
+        Artifact->>DevMgr: Install on device
+        Artifact-->>Orch: App installed
         
         Orch->>Appium: Create driver
         Appium->>Appium: Start server & session
@@ -899,13 +904,12 @@ Each job follows this precise sequence:
 
 3. **App Deployment**:
    ```csharp
-   var buildResult = await buildService.BuildAsync(platform, projectPath);
-   var appPath = await buildService.DiscoverArtifactAsync(pattern, buildResult.OutputDirectory);
-   await deviceManager.InstallAppAsync(appPath);
+   var appPath = await ResolveGlobPatternAsync(artifacts.ArtifactGlob, cancellationToken);
    
-   if (appResetPolicy == "always") {
-       await deviceManager.ResetAppDataAsync(appPath);
-   }
+   // Always fresh install for consistent state
+   var bundleId = artifacts.Package;
+   await deviceManager.UninstallAppAsync(deviceId, bundleId, cancellationToken);
+   await deviceManager.InstallAppAsync(appPath, cancellationToken);
    ```
 
 4. **Driver Session**:
@@ -974,11 +978,6 @@ Snappium coordinates multiple external tools through the `CommandRunner`:
    adb shell settings put global ...     # Configure system settings
    ```
 
-3. **Build Tools**:
-   ```bash
-   dotnet build project.csproj -c Release -f net9.0-ios     # Build iOS
-   dotnet build project.csproj -c Release -f net9.0-android # Build Android
-   ```
 
 4. **Appium**:
    ```bash
@@ -1015,7 +1014,6 @@ if (platforms.Contains(Platform.Android)) {
 }
 
 // Universal tools
-await dependencyChecker.IsCommandAvailableAsync("dotnet");
 await dependencyChecker.IsCommandAvailableAsync("appium");
 ```
 
@@ -1027,13 +1025,11 @@ await dependencyChecker.IsCommandAvailableAsync("appium");
 project-root/
 ├── screenshot_config.json          # Main configuration
 ├── iOS/
-│   ├── iOS.csproj                  # iOS project file
 │   └── bin/Release/net9.0-ios/
-│       └── iOS.app/                # Built iOS app
+│       └── iOS.app/                # Pre-built iOS app
 ├── Droid/
-│   ├── Droid.csproj               # Android project file
 │   └── bin/Release/net9.0-android/
-│       └── com.app.apk            # Built Android APK
+│       └── com.app.apk            # Pre-built Android APK
 └── schema/
     └── screenshot_config.schema.json # JSON schema for validation
 ```
@@ -1090,7 +1086,6 @@ During execution, temporary files are created and cleaned up:
 ```
 temp/
 ├── appium_server_{port}.log        # Appium server logs
-├── build_output_{platform}.log     # Build process logs
 ├── device_setup_{device}.log       # Device preparation logs
 └── screenshot_temp_{job_id}/       # Temporary screenshot staging
     ├── raw_capture.png
@@ -1155,7 +1150,7 @@ public static class Defaults
     public static class Timeouts  
     {
         public static readonly TimeSpan ShortOperation = TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan BuildOperation = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan DeviceOperation = TimeSpan.FromMinutes(5);
         public static readonly TimeSpan ElementOperation = TimeSpan.FromSeconds(10);
     }
     

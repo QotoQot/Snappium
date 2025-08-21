@@ -7,7 +7,7 @@ This comprehensive troubleshooting guide helps you diagnose and resolve common i
 - [Quick Diagnosis](#quick-diagnosis)
 - [Prerequisites & Setup Issues](#prerequisites--setup-issues)
 - [Configuration Issues](#configuration-issues)
-- [Build & Deployment Issues](#build--deployment-issues)
+- [Artifact Discovery Issues](#artifact-discovery-issues)
 - [Device Management Issues](#device-management-issues)
 - [Appium & Driver Issues](#appium--driver-issues)
 - [Screenshot Execution Issues](#screenshot-execution-issues)
@@ -33,7 +33,6 @@ This comprehensive troubleshooting guide helps you diagnose and resolve common i
 
 3. **Check tool versions**:
    ```bash
-   dotnet --version          # Should be 9.0+
    appium --version          # Should be 2.0+
    adb --version             # Android SDK tools
    xcrun simctl help         # iOS tools (macOS only)
@@ -44,7 +43,7 @@ This comprehensive troubleshooting guide helps you diagnose and resolve common i
 | Error Pattern | Likely Cause | Quick Fix |
 |---------------|--------------|-----------|
 | "Base port must be between 1024 and 65535" | Port configuration issue | Check `Ports.BasePort` in config |
-| "Could not find iOS.app artifact" | Build issue | Run `dotnet build` manually first |
+| "Could not find iOS.app artifact" | Artifact path issue | Check artifact glob patterns |
 | "Appium server not responding" | Appium not running | Install/restart Appium server |
 | "Device not found" | Device/emulator issue | Check device names and availability |
 | "Element not found" | Selector issue | Verify element selectors exist |
@@ -299,7 +298,7 @@ JSON deserialization for type 'IosDeviceDto' was missing required properties inc
    ```
 
 2. **Property naming conventions**:
-   - Use PascalCase for most properties: `PlatformVersion`, `LocaleMapping`, `BuildConfig`
+   - Use PascalCase for most properties: `PlatformVersion`, `LocaleMapping`, `Artifacts`
    - Some nested properties use lowercase: `"ios"`, `"android"`, `"name"`
 
 ### Device Configuration Issues
@@ -343,118 +342,71 @@ Device 'iPhone 15 Pro Max Ultra' not found in available simulators
    }
    ```
 
-### Build Configuration Issues
+### Artifact Configuration Issues
 
-**Problem**: Build configuration pointing to wrong paths
+**Problem**: Artifact configuration pointing to wrong paths
 ```
-Could not find project file: iOS/iOS.csproj
+Could not find iOS.app artifact at specified glob pattern
 ```
 
 **Solutions**:
-1. **Use relative paths from config file location**:
+1. **Use correct glob patterns from config file location**:
    ```json
    {
-     "BuildConfig": {
-       "ios": {
-         "Csproj": "./iOS/iOS.csproj",        // Relative to config file
-         "Tfm": "net9.0-ios",
-         "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
+     "Artifacts": {
+       "Ios": {
+         "ArtifactGlob": "iOS/bin/Release/**/iOS.app",
+         "Package": "com.example.app"
+       },
+       "Android": {
+         "ArtifactGlob": "Droid/bin/Release/**/*.apk",
+         "Package": "com.example.app"
        }
      }
    }
    ```
 
-2. **Verify project files exist**:
+2. **Verify artifacts exist**:
    ```bash
-   ls -la iOS/iOS.csproj                     # Check iOS project
-   ls -la Droid/Droid.csproj               # Check Android project
+   find . -name "*.app" -type d           # Find iOS apps
+   find . -name "*.apk" -type f           # Find Android APKs
    ```
 
-3. **Check target framework** matches project:
-   ```xml
-   <!-- In iOS.csproj -->
-   <TargetFramework>net9.0-ios</TargetFramework>
-   ```
+3. **Check package names** match your app's bundle/package ID
 
-## Build & Deployment Issues
+## Artifact Discovery Issues
 
-### .NET Build Failures
+### App Artifact Not Found
 
-**Problem**: Project build fails
+**Problem**: Pre-built app artifacts not found
 ```
-Build failed: Error MSB3644: The reference assemblies for .NETCore,Version=v9.0 were not found
+Could not find *.app artifact at specified glob pattern
 ```
 
 **Solutions**:
-1. **Check target framework**:
-   ```xml
-   <!-- Correct for .NET 9 -->
-   <TargetFramework>net9.0-ios</TargetFramework>      <!-- iOS -->
-   <TargetFramework>net9.0-android</TargetFramework>  <!-- Android -->
-   ```
-
-2. **Restore packages**:
-   ```bash
-   dotnet restore
-   dotnet build
-   ```
-
-3. **Clean and rebuild**:
-   ```bash
-   dotnet clean
-   dotnet build --configuration Release
-   ```
-
-**Problem**: Missing iOS workload
-```
-error NETSDK1147: To build this project, the following workloads must be installed: ios
-```
-
-**Solutions**:
-1. **Install iOS workload**:
-   ```bash
-   dotnet workload install ios
-   ```
-
-2. **Install Android workload**:
-   ```bash
-   dotnet workload install android
-   ```
-
-3. **Verify workloads**:
-   ```bash
-   dotnet workload list
-   ```
-
-### App Artifact Discovery Issues
-
-**Problem**: Built app not found
-```
-Could not find *.app artifact in /path/to/build/output
-```
-
-**Solutions**:
-1. **Check build output manually**:
+1. **Verify artifacts exist at expected paths**:
    ```bash
    find . -name "*.app" -type d          # Find iOS apps
    find . -name "*.apk" -type f          # Find Android APKs
    ```
 
-2. **Verify ArtifactGlob patterns**:
+2. **Check artifact glob patterns in config**:
    ```json
    {
-     "BuildConfig": {
-       "ios": {
-         "ArtifactGlob": "iOS/bin/Release/**/*.app"     // Adjust pattern
+     "Artifacts": {
+       "Ios": {
+         "ArtifactGlob": "iOS/bin/Release/**/iOS.app",    // Adjust pattern
+         "Package": "com.example.app"
        },
-       "android": {
-         "ArtifactGlob": "Droid/bin/Release/**/*.apk"   // Adjust pattern
+       "Android": {
+         "ArtifactGlob": "Droid/bin/Release/**/*.apk",   // Adjust pattern
+         "Package": "com.example.app"
        }
      }
    }
    ```
 
-3. **Build manually first**:
+3. **Build apps manually before running Snappium**:
    ```bash
    dotnet build iOS/iOS.csproj -c Release -f net9.0-ios
    dotnet build Droid/Droid.csproj -c Release -f net9.0-android
@@ -473,10 +425,10 @@ Failed to install app: The application could not be verified
    codesign -dv --verbose=4 path/to/iOS.app
    ```
 
-2. **Use simulator build** (not device build):
+2. **Ensure simulator build** (not device build):
    ```bash
-   dotnet build iOS/iOS.csproj -c Release -f net9.0-ios
-   # Not: dotnet build iOS/iOS.csproj -c Release -f net9.0-ios --runtime ios-arm64
+   # Use simulator builds for iOS (iossimulator-arm64/x64)
+   # Device builds (ios-arm64) won't work with simulators
    ```
 
 3. **Reset simulator**:
@@ -492,9 +444,10 @@ adb: failed to install app.apk: Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]
 ```
 
 **Solutions**:
-1. **Use debug build for emulators**:
+1. **Use debug/release build for emulators**:
    ```bash
-   dotnet build Droid/Droid.csproj -c Debug -f net9.0-android
+   # Either debug or release builds work with emulators
+   dotnet build Droid/Droid.csproj -c Release -f net9.0-android
    ```
 
 2. **Enable unknown sources** (if needed):
@@ -895,13 +848,10 @@ Could not navigate to settings screen - app crashed
    }
    ```
 
-3. **Reset app state between screenshots**:
+3. **Fresh app installation (always enabled)**:
    ```json
    {
-     "AppReset": {
-       "Policy": "always",                 // Reset app data each run
-       "ReinstallVsRelaunch": "relaunch"
-     }
+     "Note": "Apps are always uninstalled and reinstalled between runs for fresh state"
    }
    ```
 
@@ -978,12 +928,10 @@ Each job takes 10+ minutes to complete
 ```
 
 **Solutions**:
-1. **Optimize device preparation**:
+1. **Optimize timeouts and waits**:
    ```json
    {
-     "AppReset": {
-       "Policy": "never"                  // Skip app reset if not needed
-     }
+     "Note": "Fresh app installation is required for consistent state between language changes"
    }
    ```
 
@@ -997,11 +945,10 @@ Each job takes 10+ minutes to complete
    }
    ```
 
-3. **Use pre-built apps**:
+3. **Use artifact overrides for different apps**:
    ```bash
-   # Build once, reuse multiple times
-   dotnet build iOS/iOS.csproj -c Release
-   snappium run --config config.json --build never --ios-app path/to/iOS.app
+   # Override artifacts via command line
+   snappium run --config config.json --ios-app path/to/iOS.app --android-app path/to/app.apk
    ```
 
 ### Timeout Issues
@@ -1361,7 +1308,6 @@ When reporting issues, collect:
 1. **System information**:
    ```bash
    uname -a                              # OS version
-   dotnet --version                      # .NET version
    appium --version                      # Appium version
    adb --version                         # Android tools version
    xcrun simctl help | head -1           # iOS tools version
@@ -1397,7 +1343,6 @@ If you're still having issues:
 
 3. **Community resources**:
    - Appium documentation: https://appium.io/docs/
-   - .NET documentation: https://docs.microsoft.com/dotnet/
    - Mobile development forums
 
 Remember: Most issues are related to environment setup, configuration syntax, or device/app state. Work through the troubleshooting steps systematically, and use the detailed logging output to understand what's happening at each step.
