@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
 using Snappium.Core.Appium;
-using Snappium.Core.Build;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Infrastructure;
@@ -21,7 +20,6 @@ public sealed class JobExecutor : IJobExecutor
     private readonly IImageValidator _imageValidator;
     private readonly IIosDeviceManager _iosDeviceManager;
     private readonly IAndroidDeviceManager _androidDeviceManager;
-    private readonly IBuildService _buildService;
     private readonly IAppiumServerController _appiumServerController;
     private readonly ProcessManager _processManager;
     private readonly IServiceProvider _serviceProvider;
@@ -34,7 +32,6 @@ public sealed class JobExecutor : IJobExecutor
         IImageValidator imageValidator,
         IIosDeviceManager iosDeviceManager,
         IAndroidDeviceManager androidDeviceManager,
-        IBuildService buildService,
         IAppiumServerController appiumServerController,
         ProcessManager processManager,
         IServiceProvider serviceProvider,
@@ -46,7 +43,6 @@ public sealed class JobExecutor : IJobExecutor
         _imageValidator = imageValidator;
         _iosDeviceManager = iosDeviceManager;
         _androidDeviceManager = androidDeviceManager;
-        _buildService = buildService;
         _appiumServerController = appiumServerController;
         _processManager = processManager;
         _serviceProvider = serviceProvider;
@@ -107,9 +103,9 @@ public sealed class JobExecutor : IJobExecutor
                 // Register managed device with ProcessManager
                 RegisterManagedDevice(job, deviceIdentifier);
 
-                // Build and install app if needed
-                _snappiumLogger?.LogInfo("Building and installing app...");
-                await BuildAndInstallAppAsync(job, config, cliOverrides, deviceIdentifier, cancellationToken);
+                // Install app
+                _snappiumLogger?.LogInfo("Installing app...");
+                await InstallAppAsync(job, cliOverrides, deviceIdentifier, cancellationToken);
 
                 // Create Appium driver and execute screenshot plans
                 var serverUrl = cliOverrides?.ServerUrl ?? $"http://localhost:{ports.AppiumPort}";
@@ -231,8 +227,8 @@ public sealed class JobExecutor : IJobExecutor
             }
 
             // Always reset app data for fresh state between runs
-            var bundleId = config.BuildConfig?.Ios?.Package ?? throw new InvalidOperationException("iOS bundle identifier must be configured");
-            await _iosDeviceManager.ResetAppDataAsync(udidOrName, bundleId, cancellationToken);
+            var bundleId = config.Artifacts.Ios.Package;
+            await _iosDeviceManager.UninstallAppAsync(udidOrName, bundleId, cancellationToken);
             
             return udidOrName;
         }
@@ -251,8 +247,8 @@ public sealed class JobExecutor : IJobExecutor
             }
 
             // Always reset app data for fresh state between runs
-            var packageName = config.BuildConfig?.Android?.Package ?? throw new InvalidOperationException("Android package name must be configured");
-            await _androidDeviceManager.ResetAppDataAsync(deviceSerial, packageName, cancellationToken);
+            var packageName = config.Artifacts.Android.Package;
+            await _androidDeviceManager.UninstallAppAsync(deviceSerial, packageName, cancellationToken);
             
             return deviceSerial;
         }
@@ -260,137 +256,46 @@ public sealed class JobExecutor : IJobExecutor
         throw new InvalidOperationException($"Unsupported platform: {job.Platform}");
     }
 
-    private async Task BuildAndInstallAppAsync(
+    private async Task InstallAppAsync(
         RunJob job,
-        RootConfig config,
         CliOverrides? cliOverrides,
         string deviceIdentifier,
         CancellationToken cancellationToken)
     {
-        var buildMode = cliOverrides?.BuildMode ?? "auto";
-        var shouldBuild = false;
-
-        // Determine if we should build based on build mode
-        if (buildMode == "never" || cliOverrides?.NoBuild == true)
-        {
-            _logger.LogDebug("Skipping build due to --build never flag");
-            shouldBuild = false;
-        }
-        else if (buildMode == "always")
-        {
-            _logger.LogDebug("Building due to --build always flag");
-            shouldBuild = true;
-        }
-        else if (buildMode == "auto")
-        {
-            // Auto mode: build if no app path is provided or if app doesn't exist
-            var hasAppPath = job.Platform == Platform.iOS 
-                ? !string.IsNullOrEmpty(cliOverrides?.IosAppPath) || !string.IsNullOrEmpty(job.AppPath)
-                : !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath) || !string.IsNullOrEmpty(job.AppPath);
-            
-            if (!hasAppPath)
-            {
-                shouldBuild = true;
-                _logger.LogDebug("Building due to auto mode and no app path provided");
-            }
-            else
-            {
-                // Check if app exists
-                var appPath = job.Platform == Platform.iOS 
-                    ? cliOverrides?.IosAppPath ?? job.AppPath
-                    : cliOverrides?.AndroidAppPath ?? job.AppPath;
-                    
-                if (appPath != null && !File.Exists(appPath) && !Directory.Exists(appPath))
-                {
-                    shouldBuild = true;
-                    _logger.LogDebug("Building due to auto mode and app path does not exist: {Path}", appPath);
-                }
-                else
-                {
-                    shouldBuild = false;
-                    _logger.LogDebug("Skipping build due to auto mode and app path exists: {Path}", appPath);
-                }
-            }
-        }
-
-        if (!shouldBuild)
-        {
-            return;
-        }
-
-        string? builtAppPath = null;
-
-        // Use CLI override paths if provided (only for display/validation, we're building anyway)
+        // Determine app path - use CLI override if provided, otherwise use job app path
+        string? appPath = null;
+        
         if (job.Platform == Platform.iOS && !string.IsNullOrEmpty(cliOverrides?.IosAppPath))
         {
-            _logger.LogDebug("CLI override iOS app path will be replaced by build output: {Path}", cliOverrides.IosAppPath);
+            appPath = cliOverrides.IosAppPath;
+            _logger.LogDebug("Using CLI override iOS app path: {Path}", appPath);
         }
         else if (job.Platform == Platform.Android && !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath))
         {
-            _logger.LogDebug("CLI override Android app path will be replaced by build output: {Path}", cliOverrides.AndroidAppPath);
+            appPath = cliOverrides.AndroidAppPath;
+            _logger.LogDebug("Using CLI override Android app path: {Path}", appPath);
+        }
+        else
+        {
+            appPath = job.AppPath;
         }
         
-        if (config.BuildConfig != null)
+        if (string.IsNullOrEmpty(appPath))
         {
-            // Build the project
-            var platformBuildConfig = job.Platform == Platform.iOS ? config.BuildConfig.Ios : config.BuildConfig.Android;
-            if (platformBuildConfig?.Csproj != null)
-            {
-                var buildResult = await _buildService.BuildAsync(
-                    job.Platform,
-                    platformBuildConfig.Csproj,
-                    "Release", // Always use Release configuration for screenshots
-                    cancellationToken: cancellationToken);
-
-                if (!buildResult.Success)
-                {
-                    throw new InvalidOperationException($"Build failed: {buildResult.ErrorMessage}");
-                }
-
-                // Discover the built artifact
-                var searchPattern = job.Platform == Platform.iOS ? "*.app" : "*.apk";
-                var artifactPath = await _buildService.DiscoverArtifactAsync(searchPattern, buildResult.OutputDirectory);
-                
-                if (string.IsNullOrEmpty(artifactPath))
-                {
-                    throw new InvalidOperationException($"Could not find {searchPattern} artifact in {buildResult.OutputDirectory}");
-                }
-
-                builtAppPath = artifactPath;
-                _logger.LogInformation("Built and discovered app: {Path}", artifactPath);
-            }
+            throw new InvalidOperationException($"No app path specified for {job.Platform}. Use --ios-app or --android-app to specify the artifact path.");
         }
 
-        // Install the app - use built app path if available, otherwise fall back to provided paths
-        string? finalAppPath = builtAppPath;
+        DeviceHelpers.ValidateFilePath(appPath, $"{job.Platform} app");
         
-        if (string.IsNullOrEmpty(finalAppPath))
+        _logger.LogInformation("Installing {Platform} app: {Path}", job.Platform, appPath);
+        
+        if (job.Platform == Platform.iOS && job.IosDevice != null)
         {
-            // Use CLI override paths if no built app
-            if (job.Platform == Platform.iOS && !string.IsNullOrEmpty(cliOverrides?.IosAppPath))
-            {
-                finalAppPath = cliOverrides.IosAppPath;
-            }
-            else if (job.Platform == Platform.Android && !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath))
-            {
-                finalAppPath = cliOverrides.AndroidAppPath;
-            }
-            else
-            {
-                finalAppPath = job.AppPath;
-            }
+            await _iosDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
         }
-        
-        if (!string.IsNullOrEmpty(finalAppPath))
+        else if (job.Platform == Platform.Android)
         {
-            if (job.Platform == Platform.iOS && job.IosDevice != null)
-            {
-                await _iosDeviceManager.InstallAppAsync(deviceIdentifier, finalAppPath, cancellationToken);
-            }
-            else if (job.Platform == Platform.Android)
-            {
-                await _androidDeviceManager.InstallAppAsync(deviceIdentifier, finalAppPath, cancellationToken);
-            }
+            await _androidDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
         }
     }
 

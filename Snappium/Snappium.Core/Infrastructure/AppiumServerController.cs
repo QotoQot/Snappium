@@ -5,9 +5,8 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
-using Snappium.Core.Infrastructure;
 
-namespace Snappium.Core.Build;
+namespace Snappium.Core.Infrastructure;
 
 /// <summary>
 /// Controller for managing local Appium server instances with proper process tracking.

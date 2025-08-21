@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Snappium.Cli.Commands;
 using Snappium.Core.Appium;
-using Snappium.Core.Build;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Infrastructure;
@@ -48,8 +47,7 @@ public class CliCommandTests
         services.AddSingleton<IIosDeviceManager, IosDeviceManager>();
         services.AddSingleton<IAndroidDeviceManager, AndroidDeviceManager>();
         
-        // Build and Appium
-        services.AddSingleton<IBuildService, BuildService>();
+        // Appium
         services.AddSingleton<IAppiumServerController, AppiumServerController>();
         services.AddSingleton<IDriverFactory, DriverFactory>();
         services.AddSingleton<IElementFinder, ElementFinder>();

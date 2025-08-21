@@ -4,7 +4,7 @@ using Moq;
 using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
 using Snappium.Core.Appium;
-using Snappium.Core.Build;
+using Snappium.Core.Infrastructure;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Logging;
@@ -160,6 +160,19 @@ public class OrchestratorTests
                             Capture = new CaptureConfig { Name = "home" }
                         }
                     }
+                }
+            },
+            Artifacts = new Artifacts
+            {
+                Ios = new IosArtifact
+                {
+                    ArtifactGlob = "test.app",
+                    Package = "com.test.app"
+                },
+                Android = new AndroidArtifact
+                {
+                    ArtifactGlob = "test.apk",
+                    Package = "com.test.app"
                 }
             }
         };

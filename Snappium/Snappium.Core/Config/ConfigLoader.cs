@@ -363,23 +363,19 @@ public sealed class ConfigLoader
                 kvp => new LocaleMapping { Ios = kvp.Value.Ios, Android = kvp.Value.Android }
             ),
             Screenshots = dto.Screenshots.Select(ConvertScreenshotFromDto).ToList(),
-            BuildConfig = dto.BuildConfig != null ? new BuildConfig
+            Artifacts = new Artifacts
             {
-                Ios = dto.BuildConfig.Ios != null ? new PlatformBuildConfig
+                Ios = new IosArtifact
                 {
-                    Csproj = dto.BuildConfig.Ios.Csproj,
-                    Tfm = dto.BuildConfig.Ios.Tfm,
-                    ArtifactGlob = dto.BuildConfig.Ios.ArtifactGlob,
-                    Package = dto.BuildConfig.Ios.Package
-                } : null,
-                Android = dto.BuildConfig.Android != null ? new PlatformBuildConfig
+                    ArtifactGlob = dto.Artifacts.Ios.ArtifactGlob,
+                    Package = dto.Artifacts.Ios.Package
+                },
+                Android = new AndroidArtifact
                 {
-                    Csproj = dto.BuildConfig.Android.Csproj,
-                    Tfm = dto.BuildConfig.Android.Tfm,
-                    ArtifactGlob = dto.BuildConfig.Android.ArtifactGlob,
-                    Package = dto.BuildConfig.Android.Package
-                } : null
-            } : null,
+                    ArtifactGlob = dto.Artifacts.Android.ArtifactGlob,
+                    Package = dto.Artifacts.Android.Package
+                }
+            },
             Timeouts = dto.Timeouts != null ? new Timeouts
             {
                 DefaultWaitMs = dto.Timeouts.DefaultWaitMs,
@@ -489,7 +485,7 @@ internal sealed class RootConfigDto
     public required List<string> Languages { get; set; }
     public required Dictionary<string, LocaleMappingDto> LocaleMapping { get; set; }
     public required List<ScreenshotPlanDto> Screenshots { get; set; }
-    public BuildConfigDto? BuildConfig { get; set; }
+    public required ArtifactsDto Artifacts { get; set; }
     public TimeoutsDto? Timeouts { get; set; }
     public PortsDto? Ports { get; set; }
     public FailureArtifactsDto? FailureArtifacts { get; set; }
@@ -544,19 +540,6 @@ internal sealed class SelectorDto
     public string? Id { get; set; }
 }
 
-internal sealed class BuildConfigDto
-{
-    public PlatformBuildConfigDto? Ios { get; set; }
-    public PlatformBuildConfigDto? Android { get; set; }
-}
-
-internal sealed class PlatformBuildConfigDto
-{
-    public string? Csproj { get; set; }
-    public string? Tfm { get; set; }
-    public string? ArtifactGlob { get; set; }
-    public string? Package { get; set; }
-}
 
 internal sealed class TimeoutsDto
 {
@@ -632,4 +615,22 @@ internal sealed class DismissorsDto
 {
     public List<SelectorDto>? Ios { get; set; }
     public List<SelectorDto>? Android { get; set; }
+}
+
+internal sealed class ArtifactsDto
+{
+    public required IosArtifactDto Ios { get; set; }
+    public required AndroidArtifactDto Android { get; set; }
+}
+
+internal sealed class IosArtifactDto
+{
+    public required string ArtifactGlob { get; set; }
+    public required string Package { get; set; }
+}
+
+internal sealed class AndroidArtifactDto
+{
+    public required string ArtifactGlob { get; set; }
+    public required string Package { get; set; }
 }

@@ -218,9 +218,8 @@ public sealed class IosDeviceManager : IIosDeviceManager
         DeviceHelpers.ValidateFilePath(appPath, "iOS app");
         _logger.LogInformation("Installing iOS app {AppPath} on {Device}", appPath, deviceIdentifier);
 
-        // First uninstall any existing version to ensure fresh installation (like Android -r flag)
-        // Note: We need the bundle ID for uninstall, but we'll use a known value for now
-        await UninstallAppAsync(deviceIdentifier, "com.QotoQot.ConjuGato", cancellationToken);
+        // Note: Fresh installs would require uninstalling first, but without bundle ID configuration
+        // we cannot determine what to uninstall. Users should manually clean apps if needed.
 
         var result = await _commandRunner.RunAsync(
             "xcrun",

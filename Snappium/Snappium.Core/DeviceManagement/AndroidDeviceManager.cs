@@ -333,6 +333,28 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
     }
 
     /// <inheritdoc />
+    public async Task UninstallAppAsync(string deviceSerial, string packageName, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Uninstalling Android app {PackageName} from {Serial}", packageName, deviceSerial);
+
+        var result = await RunAdbCommandAsync(
+            deviceSerial,
+            ["uninstall", packageName],
+            timeout: TimeSpan.FromMinutes(2),
+            cancellationToken: cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            // App uninstall can fail if app isn't installed - log warning but don't throw
+            _logger.LogWarning("App uninstall failed for {PackageName}: {Error}", packageName, result.StandardError);
+        }
+        else
+        {
+            _logger.LogDebug("App uninstall completed for {PackageName}", packageName);
+        }
+    }
+
+    /// <inheritdoc />
     public Dictionary<string, object> GetCapabilities(AndroidDevice device, string languageTag, LocaleMapping localeMapping, string apkPath)
     {
         return new Dictionary<string, object>

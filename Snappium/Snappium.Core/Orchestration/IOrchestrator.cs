@@ -49,15 +49,6 @@ public sealed record CliOverrides
     /// </summary>
     public int? BasePort { get; init; }
 
-    /// <summary>
-    /// Whether to skip building.
-    /// </summary>
-    public bool NoBuild { get; init; }
-
-    /// <summary>
-    /// Build mode: auto|always|never.
-    /// </summary>
-    public string? BuildMode { get; init; }
 
     /// <summary>
     /// Override for Appium server URL.

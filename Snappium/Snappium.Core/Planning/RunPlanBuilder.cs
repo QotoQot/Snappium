@@ -172,22 +172,16 @@ public sealed class RunPlanBuilder
     {
         var paths = new Dictionary<Platform, string>();
 
-        if (config.BuildConfig?.Ios?.ArtifactGlob != null)
+        var iosPath = await ResolveGlobPatternAsync(config.Artifacts.Ios.ArtifactGlob, cancellationToken);
+        if (!string.IsNullOrEmpty(iosPath))
         {
-            var iosPath = await ResolveGlobPatternAsync(config.BuildConfig.Ios.ArtifactGlob, cancellationToken);
-            if (!string.IsNullOrEmpty(iosPath))
-            {
-                paths[Platform.iOS] = iosPath;
-            }
+            paths[Platform.iOS] = iosPath;
         }
 
-        if (config.BuildConfig?.Android?.ArtifactGlob != null)
+        var androidPath = await ResolveGlobPatternAsync(config.Artifacts.Android.ArtifactGlob, cancellationToken);
+        if (!string.IsNullOrEmpty(androidPath))
         {
-            var androidPath = await ResolveGlobPatternAsync(config.BuildConfig.Android.ArtifactGlob, cancellationToken);
-            if (!string.IsNullOrEmpty(androidPath))
-            {
-                paths[Platform.Android] = androidPath;
-            }
+            paths[Platform.Android] = androidPath;
         }
 
         return paths;
@@ -254,21 +248,8 @@ public sealed class RunPlanBuilder
 
         if (!artifactPaths.TryGetValue(platform, out var appPath))
         {
-            // Allow missing artifacts if we can build (BuildConfig is available)
-            var canBuild = config.BuildConfig != null && 
-                          (platform == Platform.iOS ? config.BuildConfig.Ios?.Csproj != null : 
-                           config.BuildConfig.Android?.Csproj != null);
-            
-            if (canBuild)
-            {
-                _logger.LogDebug("No app artifact found for platform {Platform}, but build is possible", platform);
-                appPath = null; // Will be built during job execution
-            }
-            else
-            {
-                _logger.LogWarning("No app artifact found for platform {Platform} and no build config available, skipping", platform);
-                return null;
-            }
+            _logger.LogDebug("No app artifact found for platform {Platform}, job will require CLI app path override", platform);
+            appPath = null; // Must be provided via CLI --ios-app or --android-app
         }
 
         await Task.Yield(); // Make this async for consistency

@@ -22,15 +22,12 @@
     "en-US": {"ios": "en_US", "android": "en_US"},
     "es-ES": {"ios": "es_ES", "android": "es_ES"}
   },
-  "BuildConfig": {
+  "Artifacts": {
     "Ios": {
-      "Csproj": "iOS/iOS.csproj",
-      "Tfm": "net9.0-ios",
-      "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
+      "ArtifactGlob": "iOS/bin/Release/**/iOS.app",
+      "Package": "com.example.ios.app"
     },
     "Android": {
-      "Csproj": "Droid/Droid.csproj", 
-      "Tfm": "net9.0-android",
       "ArtifactGlob": "Droid/bin/Release/**/*.apk",
       "Package": "com.example.app"
     }

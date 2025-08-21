@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Snappium.Core.Abstractions;
 using Snappium.Core.Appium;
-using Snappium.Core.Build;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Infrastructure;
@@ -117,25 +116,6 @@ public class ScreenshotAutomationTests
             return mock.Object;
         });
         
-        // Mock build service
-        services.AddSingleton<IBuildService>(provider =>
-        {
-            var mock = new Mock<IBuildService>();
-            
-            mock.Setup(x => x.BuildAsync(It.IsAny<Platform>(), It.IsAny<string>(), It.IsAny<string>(), 
-                It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new BuildResult
-                {
-                    Success = true,
-                    OutputDirectory = "/tmp/build-output",
-                    Duration = TimeSpan.FromMinutes(2)
-                });
-                
-            mock.Setup(x => x.DiscoverArtifactAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync("/tmp/test-app.app");
-                
-            return mock.Object;
-        });
         
         // Mock Appium components
         services.AddSingleton<IAppiumServerController>(provider =>
@@ -387,15 +367,17 @@ public class ScreenshotAutomationTests
                     }
                 }
             },
-            BuildConfig = new BuildConfig
+            Artifacts = new Artifacts
             {
-                Ios = new PlatformBuildConfig
+                Ios = new IosArtifact
                 {
-                    ArtifactGlob = Path.Combine(Path.GetTempPath(), "snappium-tests-*", "test-app.app")
+                    ArtifactGlob = Path.Combine(Path.GetTempPath(), "snappium-tests-*", "test-app.app"),
+                    Package = "com.snappium.testapp"
                 },
-                Android = new PlatformBuildConfig
+                Android = new AndroidArtifact
                 {
-                    ArtifactGlob = Path.Combine(Path.GetTempPath(), "snappium-tests-*", "test-app.apk")
+                    ArtifactGlob = Path.Combine(Path.GetTempPath(), "snappium-tests-*", "test-app.apk"),
+                    Package = "com.snappium.testapp"
                 }
             },
             Validation = new Validation

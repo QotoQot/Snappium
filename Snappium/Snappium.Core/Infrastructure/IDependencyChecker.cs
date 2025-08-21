@@ -1,4 +1,4 @@
-namespace Snappium.Core.Build;
+namespace Snappium.Core.Infrastructure;
 
 /// <summary>
 /// Service for checking required dependencies and tools.
@@ -11,13 +11,6 @@ public interface IDependencyChecker
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Dependency check result</returns>
     Task<DependencyCheckResult> CheckDependenciesAsync(CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Check if .NET CLI is available and get version.
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Dependency check result for .NET</returns>
-    Task<DependencyResult> CheckDotNetAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Check if xcrun (Xcode Command Line Tools) is available on macOS.

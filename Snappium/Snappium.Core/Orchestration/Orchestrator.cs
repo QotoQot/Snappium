@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
 using Snappium.Core.Appium;
-using Snappium.Core.Build;
+using Snappium.Core.Appium;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
 using Snappium.Core.Infrastructure;

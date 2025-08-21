@@ -52,6 +52,15 @@ public interface IAndroidDeviceManager : IDeviceManager
     Task StopEmulatorAsync(string deviceSerial, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Uninstall an app from an Android emulator.
+    /// </summary>
+    /// <param name="deviceSerial">Emulator serial number</param>
+    /// <param name="packageName">Android app package name</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that completes when app is uninstalled</returns>
+    Task UninstallAppAsync(string deviceSerial, string packageName, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get Appium capabilities for an Android device.
     /// </summary>
     /// <param name="device">Android device configuration</param>

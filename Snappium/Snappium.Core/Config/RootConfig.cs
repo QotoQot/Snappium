@@ -32,9 +32,11 @@ public sealed class RootConfig
     public required List<ScreenshotPlan> Screenshots { get; init; }
 
     /// <summary>
-    /// Build configuration for app compilation and artifact discovery.
+    /// Artifacts configuration for app bundles.
     /// </summary>
-    public BuildConfig? BuildConfig { get; init; }
+    [Required]
+    public required Artifacts Artifacts { get; init; }
+
 
     /// <summary>
     /// Timeout configuration for various operations.

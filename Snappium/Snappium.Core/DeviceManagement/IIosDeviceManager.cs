@@ -33,6 +33,15 @@ public interface IIosDeviceManager : IDeviceManager
     Task SetStatusBarAsync(string udidOrName, IosStatusBar statusBar, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Uninstall an app from an iOS simulator.
+    /// </summary>
+    /// <param name="deviceIdentifier">Device UDID or name</param>
+    /// <param name="bundleId">iOS app bundle identifier</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task that completes when app is uninstalled</returns>
+    Task UninstallAppAsync(string deviceIdentifier, string bundleId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get Appium capabilities for an iOS device.
     /// </summary>
     /// <param name="device">iOS device configuration</param>

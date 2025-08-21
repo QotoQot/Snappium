@@ -63,12 +63,6 @@ public class RunCommand : Command
             AllowMultipleArgumentsPerToken = true
         };
 
-        var buildOption = new Option<string>(
-            name: "--build",
-            description: "Build mode: auto|always|never")
-        {
-            ArgumentHelpName = "mode"
-        };
 
         var iosAppOption = new Option<FileInfo>(
             name: "--ios-app",
@@ -109,7 +103,6 @@ public class RunCommand : Command
         AddOption(devicesOption);
         AddOption(langsOption);
         AddOption(screensOption);
-        AddOption(buildOption);
         AddOption(iosAppOption);
         AddOption(androidAppOption);
         AddOption(outputOption);
@@ -125,7 +118,6 @@ public class RunCommand : Command
             var devices = context.ParseResult.GetValueForOption(devicesOption);
             var langs = context.ParseResult.GetValueForOption(langsOption);
             var screens = context.ParseResult.GetValueForOption(screensOption);
-            var build = context.ParseResult.GetValueForOption(buildOption);
             var iosApp = context.ParseResult.GetValueForOption(iosAppOption);
             var androidApp = context.ParseResult.GetValueForOption(androidAppOption);
             var output = context.ParseResult.GetValueForOption(outputOption);
@@ -134,7 +126,7 @@ public class RunCommand : Command
             var retryFailed = context.ParseResult.GetValueForOption(retryFailedOption);
             var verbose = context.ParseResult.GetValueForOption(verboseOption);
 
-            context.ExitCode = await ExecuteAsync(config, platforms, devices, langs, screens, build, 
+            context.ExitCode = await ExecuteAsync(config, platforms, devices, langs, screens, 
                 iosApp, androidApp, output, basePort, dryRun, retryFailed, verbose, context.GetCancellationToken());
         });
     }
@@ -145,7 +137,6 @@ public class RunCommand : Command
         string[]? devices,
         string[]? langs,
         string[]? screens,
-        string? build,
         FileInfo? iosApp,
         FileInfo? androidApp,
         DirectoryInfo? output,
@@ -161,16 +152,12 @@ public class RunCommand : Command
             var config = await _configLoader.LoadAsync(configFile.FullName, schemaPath: null, cancellationToken);
             _logger.LogInformation("Loaded configuration from {ConfigPath}", configFile.FullName);
 
-            // Build CLI overrides - convert --build never to NoBuild = true for backward compatibility
-            var noBuild = string.Equals(build, "never", StringComparison.OrdinalIgnoreCase);
             var cliOverrides = new CliOverrides
             {
                 IosAppPath = iosApp?.FullName,
                 AndroidAppPath = androidApp?.FullName,
                 OutputDirectory = output?.FullName,
-                BasePort = basePort,
-                NoBuild = noBuild,
-                BuildMode = build
+                BasePort = basePort
             };
 
             // Create run plan with port allocation

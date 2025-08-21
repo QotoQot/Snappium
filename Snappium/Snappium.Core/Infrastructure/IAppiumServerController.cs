@@ -1,4 +1,4 @@
-namespace Snappium.Core.Build;
+namespace Snappium.Core.Infrastructure;
 
 /// <summary>
 /// Controller for managing local Appium server instances.

@@ -1,9 +1,8 @@
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
-using Snappium.Core.Infrastructure;
 
-namespace Snappium.Core.Build;
+namespace Snappium.Core.Infrastructure;
 
 /// <summary>
 /// Service for checking required dependencies and tools.
@@ -25,9 +24,6 @@ public sealed class DependencyChecker : IDependencyChecker
         _logger.LogInformation("Checking dependencies...");
         
         var dependencies = new List<DependencyResult>();
-        
-        // Check .NET (always required)
-        dependencies.Add(await CheckDotNetAsync(cancellationToken));
         
         // Check platform-specific tools
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
@@ -67,12 +63,6 @@ public sealed class DependencyChecker : IDependencyChecker
         }
         
         return result;
-    }
-
-    /// <inheritdoc />
-    public async Task<DependencyResult> CheckDotNetAsync(CancellationToken cancellationToken = default)
-    {
-        return await CheckCommandAsync("dotnet", ["--version"], "dotnet", isRequired: true, cancellationToken);
     }
 
     /// <inheritdoc />
