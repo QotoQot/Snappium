@@ -222,19 +222,17 @@ public sealed class JobExecutor : IJobExecutor
             
             // iOS preparation sequence
             await _iosDeviceManager.ShutdownAsync(udidOrName, cancellationToken);
-            await _iosDeviceManager.SetLanguageAsync(udidOrName, job.Language, job.LocaleMapping, cancellationToken);
             await _iosDeviceManager.BootAsync(udidOrName, cancellationToken);
+            await _iosDeviceManager.SetLanguageAsync(udidOrName, job.Language, job.LocaleMapping, cancellationToken);
             
             if (config.StatusBar?.Ios != null)
             {
                 await _iosDeviceManager.SetStatusBarAsync(udidOrName, config.StatusBar.Ios, cancellationToken);
             }
 
-            if (config.AppReset?.Policy == "always" || config.AppReset?.Policy == "on_language_change")
-            {
-                var bundleId = await DeviceHelpers.ExtractIosBundleIdAsync(job.AppPath);
-                await _iosDeviceManager.ResetAppDataAsync(udidOrName, bundleId, cancellationToken);
-            }
+            // Always reset app data for fresh state between runs
+            var bundleId = config.BuildConfig?.Ios?.Package ?? throw new InvalidOperationException("iOS bundle identifier must be configured");
+            await _iosDeviceManager.ResetAppDataAsync(udidOrName, bundleId, cancellationToken);
             
             return udidOrName;
         }
@@ -252,11 +250,9 @@ public sealed class JobExecutor : IJobExecutor
                 await _androidDeviceManager.SetStatusBarDemoModeAsync(deviceSerial, config.StatusBar.Android, cancellationToken);
             }
 
-            if (config.AppReset?.Policy == "always" || config.AppReset?.Policy == "on_language_change")
-            {
-                var packageName = config.BuildConfig?.Android?.Package ?? throw new InvalidOperationException("Android package name must be configured for app reset");
-                await _androidDeviceManager.ResetAppDataAsync(deviceSerial, packageName, cancellationToken);
-            }
+            // Always reset app data for fresh state between runs
+            var packageName = config.BuildConfig?.Android?.Package ?? throw new InvalidOperationException("Android package name must be configured");
+            await _androidDeviceManager.ResetAppDataAsync(deviceSerial, packageName, cancellationToken);
             
             return deviceSerial;
         }

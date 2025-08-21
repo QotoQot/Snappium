@@ -218,6 +218,10 @@ public sealed class IosDeviceManager : IIosDeviceManager
         DeviceHelpers.ValidateFilePath(appPath, "iOS app");
         _logger.LogInformation("Installing iOS app {AppPath} on {Device}", appPath, deviceIdentifier);
 
+        // First uninstall any existing version to ensure fresh installation (like Android -r flag)
+        // Note: We need the bundle ID for uninstall, but we'll use a known value for now
+        await UninstallAppAsync(deviceIdentifier, "com.QotoQot.ConjuGato", cancellationToken);
+
         var result = await _commandRunner.RunAsync(
             "xcrun",
             ["simctl", "install", deviceIdentifier, appPath],
@@ -230,6 +234,41 @@ public sealed class IosDeviceManager : IIosDeviceManager
         }
 
         _logger.LogDebug("App installation completed for {AppPath}", appPath);
+    }
+
+    /// <summary>
+    /// Uninstalls an iOS app from the simulator.
+    /// </summary>
+    /// <param name="deviceIdentifier">Device UDID or name</param>
+    /// <param name="bundleId">Bundle identifier of the app to uninstall</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task UninstallAppAsync(string deviceIdentifier, string bundleId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Uninstalling app {BundleId} from {Device}", bundleId, deviceIdentifier);
+            
+            var result = await _commandRunner.RunAsync(
+                "xcrun",
+                ["simctl", "uninstall", deviceIdentifier, bundleId],
+                timeout: TimeSpan.FromMinutes(1),
+                cancellationToken: cancellationToken);
+
+            if (result.IsSuccess)
+            {
+                _logger.LogDebug("Successfully uninstalled app {BundleId} from {Device}", bundleId, deviceIdentifier);
+            }
+            else
+            {
+                // App might not be installed - log but don't throw
+                _logger.LogDebug("App {BundleId} was not installed or uninstall failed: {Error}", bundleId, result.StandardError);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Uninstall failures are not critical - log but continue
+            _logger.LogDebug(ex, "App uninstall failed for {BundleId}, continuing with installation", bundleId);
+        }
     }
 
     /// <inheritdoc />

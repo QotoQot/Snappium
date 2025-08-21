@@ -121,30 +121,42 @@ public sealed class BuildService : IBuildService
     {
         baseDirectory ??= Environment.CurrentDirectory;
         
+        // Normalize path separators for consistent cross-platform behavior
+        baseDirectory = baseDirectory.Replace('\\', '/');
+        
         _logger.LogDebug("Discovering artifacts with pattern '{Pattern}' in '{BaseDirectory}'", 
             searchPattern, baseDirectory);
 
         try
         {
-            // Use Directory.GetFiles with SearchOption.AllDirectories for recursive search
+            // Search for both files and directories (iOS .app bundles are directories)
             var files = Directory.GetFiles(baseDirectory, searchPattern, SearchOption.AllDirectories);
+            var directories = Directory.GetDirectories(baseDirectory, searchPattern, SearchOption.AllDirectories);
             
-            if (files.Length == 0)
+            var allMatches = files.Cast<string>().Concat(directories).ToArray();
+            
+            if (allMatches.Length == 0)
             {
                 _logger.LogDebug("No artifacts found matching pattern '{Pattern}'", searchPattern);
                 return null;
             }
 
-            // Get the most recently modified file
-            var latestFile = files
-                .Select(f => new FileInfo(f))
-                .OrderByDescending(fi => fi.LastWriteTime)
+            // Get the most recently modified file or directory
+            var latestMatch = allMatches
+                .Select(path => 
+                {
+                    if (File.Exists(path))
+                        return (FileSystemInfo)new FileInfo(path);
+                    else
+                        return (FileSystemInfo)new DirectoryInfo(path);
+                })
+                .OrderByDescending(info => info.LastWriteTime)
                 .First();
 
             _logger.LogInformation("Discovered artifact: {Path} (modified: {Modified})", 
-                latestFile.FullName, latestFile.LastWriteTime);
+                latestMatch.FullName, latestMatch.LastWriteTime);
 
-            return Task.FromResult<string?>(latestFile.FullName);
+            return Task.FromResult<string?>(latestMatch.FullName);
         }
         catch (Exception ex)
         {
@@ -212,6 +224,8 @@ public sealed class BuildService : IBuildService
                         if (projectDir != null)
                         {
                             outputPath = Path.GetFullPath(Path.Combine(projectDir, outputPath));
+                            // Normalize path separators to forward slashes for consistency 
+                            outputPath = outputPath.Replace('\\', '/');
                         }
                     }
 

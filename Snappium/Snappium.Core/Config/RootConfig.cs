@@ -46,10 +46,6 @@ public sealed class RootConfig
     /// </summary>
     public Ports? Ports { get; init; }
 
-    /// <summary>
-    /// App reset policy configuration.
-    /// </summary>
-    public AppReset? AppReset { get; init; }
 
     /// <summary>
     /// Failure artifact collection configuration.

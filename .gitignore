@@ -45,3 +45,4 @@ BenchmarkDotNet.Artifacts/
 !**/[Pp]ackages/build/
 *.nuget.props
 *.nuget.targets
+Screenshots

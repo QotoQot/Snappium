@@ -37,7 +37,7 @@ public sealed class PlatformBuildConfig
     public string? ArtifactGlob { get; init; }
 
     /// <summary>
-    /// Package name/bundle identifier (for Android).
+    /// Package name (Android) or bundle identifier (iOS).
     /// </summary>
     public string? Package { get; init; }
 }

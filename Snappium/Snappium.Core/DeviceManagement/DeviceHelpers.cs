@@ -104,15 +104,24 @@ public static class DeviceHelpers
             throw new ArgumentException($"{fileType} path cannot be null or empty", nameof(filePath));
         }
 
-        if (!File.Exists(filePath))
+        // Check if path exists as either file or directory (iOS .app bundles are directories)
+        if (!File.Exists(filePath) && !Directory.Exists(filePath))
         {
             throw new FileNotFoundException($"{fileType} not found: {filePath}");
         }
 
         try
         {
-            // Test read access
-            using var _ = File.OpenRead(filePath);
+            // Test read access - handle both files and directories
+            if (File.Exists(filePath))
+            {
+                using var _ = File.OpenRead(filePath);
+            }
+            else if (Directory.Exists(filePath))
+            {
+                // For directories, just test that we can enumerate them
+                Directory.EnumerateFileSystemEntries(filePath).Take(1).ToList();
+            }
         }
         catch (UnauthorizedAccessException)
         {
@@ -159,65 +168,4 @@ public static class DeviceHelpers
         return !string.IsNullOrWhiteSpace(udid) ? udid : name;
     }
 
-    /// <summary>
-    /// Extract the bundle ID from an iOS app path using proper XML parsing.
-    /// </summary>
-    /// <param name="appPath">Path to the .app bundle</param>
-    /// <returns>Bundle identifier</returns>
-    public static async Task<string> ExtractIosBundleIdAsync(string appPath)
-    {
-        ValidateFilePath(appPath, "iOS app");
-
-        var infoPlistPath = Path.Combine(appPath, "Info.plist");
-        if (!File.Exists(infoPlistPath))
-        {
-            throw new InvalidOperationException($"Info.plist not found in app bundle: {appPath}");
-        }
-
-        try
-        {
-            // Use proper XML parsing instead of brittle string manipulation
-            var content = await File.ReadAllTextAsync(infoPlistPath);
-            var doc = XDocument.Parse(content);
-            
-            // Navigate the plist structure: plist -> dict -> key/value pairs
-            var dictElement = doc.Root?.Element("dict");
-            if (dictElement == null)
-            {
-                throw new InvalidOperationException($"Invalid Info.plist structure - missing dict element: {infoPlistPath}");
-            }
-
-            // Find CFBundleIdentifier key-value pair in the dictionary
-            var keyElements = dictElement.Elements("key").ToList();
-            for (int i = 0; i < keyElements.Count; i++)
-            {
-                var keyElement = keyElements[i];
-                if (string.Equals(keyElement.Value, "CFBundleIdentifier", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Get the next sibling element which should contain the value
-                    var valueElement = keyElement.ElementsAfterSelf().FirstOrDefault();
-                    if (valueElement?.Name == "string")
-                    {
-                        var bundleId = valueElement.Value?.Trim();
-                        if (string.IsNullOrEmpty(bundleId))
-                        {
-                            throw new InvalidOperationException($"Empty CFBundleIdentifier value in Info.plist: {infoPlistPath}");
-                        }
-                        
-                        return bundleId;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"CFBundleIdentifier value is not a string in Info.plist: {infoPlistPath}");
-                    }
-                }
-            }
-
-            throw new InvalidOperationException($"CFBundleIdentifier not found in Info.plist: {infoPlistPath}");
-        }
-        catch (System.Xml.XmlException ex)
-        {
-            throw new InvalidOperationException($"Invalid XML in Info.plist: {infoPlistPath}", ex);
-        }
-    }
 }

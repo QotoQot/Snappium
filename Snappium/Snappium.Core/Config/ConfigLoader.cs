@@ -391,12 +391,6 @@ public sealed class ConfigLoader
                 BasePort = dto.Ports.BasePort,
                 PortOffset = dto.Ports.PortOffset
             } : null,
-            AppReset = dto.AppReset != null ? new AppReset
-            {
-                Policy = dto.AppReset.Policy,
-                ClearDataOnLanguageChange = dto.AppReset.ClearDataOnLanguageChange,
-                ReinstallVsRelaunch = dto.AppReset.ReinstallVsRelaunch
-            } : null,
             FailureArtifacts = dto.FailureArtifacts != null ? new FailureArtifacts
             {
                 SavePageSource = dto.FailureArtifacts.SavePageSource,
@@ -498,7 +492,6 @@ internal sealed class RootConfigDto
     public BuildConfigDto? BuildConfig { get; set; }
     public TimeoutsDto? Timeouts { get; set; }
     public PortsDto? Ports { get; set; }
-    public AppResetDto? AppReset { get; set; }
     public FailureArtifactsDto? FailureArtifacts { get; set; }
     public StatusBarDto? StatusBar { get; set; }
     public ValidationDto? Validation { get; set; }
@@ -578,12 +571,6 @@ internal sealed class PortsDto
     public int? PortOffset { get; set; }
 }
 
-internal sealed class AppResetDto
-{
-    public string? Policy { get; set; }
-    public bool? ClearDataOnLanguageChange { get; set; }
-    public string? ReinstallVsRelaunch { get; set; }
-}
 
 internal sealed class FailureArtifactsDto
 {

@@ -216,13 +216,22 @@ public sealed class RunPlanBuilder
 
         await Task.Yield(); // Make this async for consistency
 
+        // Search both files and directories to handle iOS .app bundles (which are directories)
         var files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories)
             .Where(f => regex.IsMatch(Path.GetFileName(f)))
             .ToArray();
 
-        // Return the most recently modified file with absolute path
-        return files.Length > 0
-            ? Path.GetFullPath(files.OrderByDescending(f => new FileInfo(f).LastWriteTime).First())
+        var directories = Directory.GetDirectories(directory, "*", SearchOption.AllDirectories)
+            .Where(d => regex.IsMatch(Path.GetDirectoryName(d) == directory ? Path.GetFileName(d) : Path.GetFileName(d)))
+            .ToArray();
+
+        // Combine files and directories, prioritizing directories for iOS apps
+        var allMatches = directories.Concat(files).ToArray();
+
+        // Return the most recently modified match with absolute path
+        return allMatches.Length > 0
+            ? Path.GetFullPath(allMatches.OrderByDescending(path => 
+                Directory.Exists(path) ? new DirectoryInfo(path).LastWriteTime : new FileInfo(path).LastWriteTime).First())
             : null;
     }
 
