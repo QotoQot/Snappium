@@ -553,12 +553,12 @@ public class ConfigLoaderTests
               "Name": "test",
               "Actions": [
                 {
-                  "wait_for": {
-                    "timeout": 5000,
-                    "selector": {}
+                  "WaitFor": {
+                    "TimeoutMs": 5000,
+                    "Selector": {}
                   }
                 },
-                {"capture": {"name": "test"}}
+                {"Capture": {"Name": "test"}}
               ]
             }
           ]
