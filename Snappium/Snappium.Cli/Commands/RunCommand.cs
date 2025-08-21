@@ -14,6 +14,7 @@ public class RunCommand : Command
     private readonly RunPlanBuilder _runPlanBuilder;
     private readonly IManifestWriter _manifestWriter;
     private readonly ILogger<RunCommand> _logger;
+    private readonly FilteringOptions _filteringOptions;
 
     public RunCommand(
         IOrchestrator orchestrator,
@@ -28,42 +29,10 @@ public class RunCommand : Command
         _manifestWriter = manifestWriter;
         _logger = logger;
 
-        var configOption = new Option<FileInfo>(
-            name: "--config",
-            description: "Path to configuration JSON file")
-        {
-            IsRequired = true
-        };
+        // Add shared filtering options
+        _filteringOptions = SharedCommandOptions.AddFilteringOptions(this);
 
-        var platformsOption = new Option<string[]>(
-            name: "--platforms", 
-            description: "Comma-separated platforms (ios,android)")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var devicesOption = new Option<string[]>(
-            name: "--devices",
-            description: "Comma-separated device names")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var langsOption = new Option<string[]>(
-            name: "--langs",
-            description: "Comma-separated languages")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var screensOption = new Option<string[]>(
-            name: "--screens",
-            description: "Comma-separated screenshot names")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-
+        // Add run-specific options
         var iosAppOption = new Option<FileInfo>(
             name: "--ios-app",
             description: "Path to iOS .app bundle");
@@ -71,10 +40,6 @@ public class RunCommand : Command
         var androidAppOption = new Option<FileInfo>(
             name: "--android-app", 
             description: "Path to Android .apk file");
-
-        var outputOption = new Option<DirectoryInfo>(
-            name: "--output",
-            description: "Output directory for screenshots");
 
         var basePortOption = new Option<int?>(
             name: "--base-port",
@@ -98,14 +63,9 @@ public class RunCommand : Command
             IsHidden = true // Hidden since verbose is always enabled
         };
 
-        AddOption(configOption);
-        AddOption(platformsOption);
-        AddOption(devicesOption);
-        AddOption(langsOption);
-        AddOption(screensOption);
+        // Add run-specific options (filtering options already added via SharedCommandOptions)
         AddOption(iosAppOption);
         AddOption(androidAppOption);
-        AddOption(outputOption);
         AddOption(basePortOption);
         AddOption(dryRunOption);
         AddOption(retryFailedOption);
@@ -113,14 +73,14 @@ public class RunCommand : Command
 
         this.SetHandler(async (context) =>
         {
-            var config = context.ParseResult.GetValueForOption(configOption)!;
-            var platforms = context.ParseResult.GetValueForOption(platformsOption);
-            var devices = context.ParseResult.GetValueForOption(devicesOption);
-            var langs = context.ParseResult.GetValueForOption(langsOption);
-            var screens = context.ParseResult.GetValueForOption(screensOption);
+            var config = context.ParseResult.GetValueForOption(_filteringOptions.Config)!;
+            var platforms = context.ParseResult.GetValueForOption(_filteringOptions.Platforms);
+            var devices = context.ParseResult.GetValueForOption(_filteringOptions.Devices);
+            var langs = context.ParseResult.GetValueForOption(_filteringOptions.Languages);
+            var screens = context.ParseResult.GetValueForOption(_filteringOptions.Screenshots);
+            var output = context.ParseResult.GetValueForOption(_filteringOptions.Output);
             var iosApp = context.ParseResult.GetValueForOption(iosAppOption);
             var androidApp = context.ParseResult.GetValueForOption(androidAppOption);
-            var output = context.ParseResult.GetValueForOption(outputOption);
             var basePort = context.ParseResult.GetValueForOption(basePortOption);
             var dryRun = context.ParseResult.GetValueForOption(dryRunOption);
             var retryFailed = context.ParseResult.GetValueForOption(retryFailedOption);

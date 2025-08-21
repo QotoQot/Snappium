@@ -11,6 +11,7 @@ public class GenerateMatrixCommand : Command
     private readonly ConfigLoader _configLoader;
     private readonly RunPlanBuilder _runPlanBuilder;
     private readonly ILogger<GenerateMatrixCommand> _logger;
+    private readonly FilteringOptions _filteringOptions;
 
     public GenerateMatrixCommand(ConfigLoader configLoader, RunPlanBuilder runPlanBuilder, ILogger<GenerateMatrixCommand> logger) : base("generate-matrix", "Generate CI matrix JSON from run plan")
     {
@@ -18,45 +19,10 @@ public class GenerateMatrixCommand : Command
         _runPlanBuilder = runPlanBuilder;
         _logger = logger;
 
-        var configOption = new Option<FileInfo>(
-            name: "--config",
-            description: "Path to configuration JSON file")
-        {
-            IsRequired = true
-        };
+        // Add shared filtering options
+        _filteringOptions = SharedCommandOptions.AddFilteringOptions(this);
 
-        var platformsOption = new Option<string[]>(
-            name: "--platforms", 
-            description: "Comma-separated platforms (ios,android)")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var devicesOption = new Option<string[]>(
-            name: "--devices",
-            description: "Comma-separated device names")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var langsOption = new Option<string[]>(
-            name: "--langs",
-            description: "Comma-separated languages")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var screensOption = new Option<string[]>(
-            name: "--screens",
-            description: "Comma-separated screenshot names")
-        {
-            AllowMultipleArgumentsPerToken = true
-        };
-
-        var outputOption = new Option<DirectoryInfo>(
-            name: "--output",
-            description: "Output directory for screenshots");
-
+        // Add command-specific options
         var formatOption = new Option<string>(
             name: "--format",
             description: "Output format: github|gitlab|azure")
@@ -64,22 +30,16 @@ public class GenerateMatrixCommand : Command
             ArgumentHelpName = "format"
         };
 
-        AddOption(configOption);
-        AddOption(platformsOption);
-        AddOption(devicesOption);
-        AddOption(langsOption);
-        AddOption(screensOption);
-        AddOption(outputOption);
         AddOption(formatOption);
 
         this.SetHandler(async (context) =>
         {
-            var config = context.ParseResult.GetValueForOption(configOption)!;
-            var platforms = context.ParseResult.GetValueForOption(platformsOption);
-            var devices = context.ParseResult.GetValueForOption(devicesOption);
-            var langs = context.ParseResult.GetValueForOption(langsOption);
-            var screens = context.ParseResult.GetValueForOption(screensOption);
-            var output = context.ParseResult.GetValueForOption(outputOption);
+            var config = context.ParseResult.GetValueForOption(_filteringOptions.Config)!;
+            var platforms = context.ParseResult.GetValueForOption(_filteringOptions.Platforms);
+            var devices = context.ParseResult.GetValueForOption(_filteringOptions.Devices);
+            var langs = context.ParseResult.GetValueForOption(_filteringOptions.Languages);
+            var screens = context.ParseResult.GetValueForOption(_filteringOptions.Screenshots);
+            var output = context.ParseResult.GetValueForOption(_filteringOptions.Output);
             var format = context.ParseResult.GetValueForOption(formatOption) ?? "github";
 
             context.ExitCode = await ExecuteAsync(config, platforms, devices, langs, screens, output, format, context.GetCancellationToken());

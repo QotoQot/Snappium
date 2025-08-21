@@ -73,6 +73,7 @@ public sealed class JobExecutor : IJobExecutor
         string? errorMessage = null;
         string? deviceIdentifier = null;
         string? appiumProcessId = null;
+        AppiumDriver? driver = null; // Driver is now nullable for artifact capture
 
         try
         {
@@ -110,7 +111,7 @@ public sealed class JobExecutor : IJobExecutor
                 // Create Appium driver and execute screenshot plans
                 var serverUrl = cliOverrides?.ServerUrl ?? $"http://localhost:{ports.AppiumPort}";
                 _snappiumLogger?.LogInfo("Creating Appium driver for {0}", serverUrl);
-                using var driver = await _driverFactory.CreateDriverAsync(job, serverUrl, cancellationToken);
+                driver = await _driverFactory.CreateDriverAsync(job, serverUrl, cancellationToken);
 
             _snappiumLogger?.LogInfo("Executing {0} screenshot plans", job.Screenshots.Count);
             foreach (var screenshotPlan in job.Screenshots)
@@ -151,14 +152,16 @@ public sealed class JobExecutor : IJobExecutor
                     success = false;
                     errorMessage = ex.Message;
 
-                    // Capture failure artifacts
-                    _snappiumLogger?.LogWarning("Capturing failure artifacts...");
-                    await CaptureFailureArtifactsAsync(driver, job, deviceIdentifier, failureArtifacts, cancellationToken);
+                    // Don't capture artifacts here - will be captured in main catch block
+                    // This avoids duplicate artifact capture
                 }
             }
             }
             finally
             {
+                // Dispose driver if it was created
+                driver?.Dispose();
+                
                 // Unregister and cleanup managed processes
                 _snappiumLogger?.LogInfo("Cleaning up managed processes...");
                 await UnregisterManagedDeviceAsync(job, deviceIdentifier, cancellationToken);
@@ -174,6 +177,11 @@ public sealed class JobExecutor : IJobExecutor
             _snappiumLogger?.LogError(ex, "Job failed for {0} {1}", job.Platform, job.DeviceFolder);
             success = false;
             errorMessage = ex.Message;
+
+            // Capture failure artifacts for any job-level failure
+            // This covers failures during server start, device preparation, app installation, driver creation, etc.
+            _snappiumLogger?.LogWarning("Capturing failure artifacts due to job-level failure...");
+            await CaptureFailureArtifactsAsync(driver, job, deviceIdentifier, failureArtifacts, cancellationToken);
         }
         finally
         {
@@ -300,9 +308,9 @@ public sealed class JobExecutor : IJobExecutor
     }
 
     private async Task CaptureFailureArtifactsAsync(
-        AppiumDriver driver,
+        AppiumDriver? driver, // Driver can be null if failure occurred before driver creation
         RunJob job,
-        string deviceIdentifier,
+        string? deviceIdentifier, // Device identifier can be null if failure occurred before device preparation
         List<FailureArtifact> failureArtifacts,
         CancellationToken cancellationToken)
     {
@@ -311,51 +319,104 @@ public sealed class JobExecutor : IJobExecutor
             var artifactDir = Path.Combine(job.OutputDirectory, "failure_artifacts");
             Directory.CreateDirectory(artifactDir);
 
-            // Capture page source
-            try
+            // Capture page source (only if driver is available)
+            if (driver != null)
             {
-                var pageSource = driver.PageSource;
-                var pageSourcePath = Path.Combine(artifactDir, "page_source.xml");
-                await File.WriteAllTextAsync(pageSourcePath, pageSource, cancellationToken);
-                
-                failureArtifacts.Add(new FailureArtifact
+                try
                 {
-                    Type = FailureArtifactType.PageSource,
-                    Path = pageSourcePath,
-                    Timestamp = DateTimeOffset.UtcNow
-                });
+                    var pageSource = driver.PageSource;
+                    var pageSourcePath = Path.Combine(artifactDir, "page_source.xml");
+                    await File.WriteAllTextAsync(pageSourcePath, pageSource, cancellationToken);
+                    
+                    failureArtifacts.Add(new FailureArtifact
+                    {
+                        Type = FailureArtifactType.PageSource,
+                        Path = pageSourcePath,
+                        Timestamp = DateTimeOffset.UtcNow
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to capture page source");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "Failed to capture page source");
+                _logger.LogInformation("Skipping page source capture - driver not available (failure occurred before driver creation)");
             }
 
-            // Capture failure screenshot
-            try
+            // Capture failure screenshot (only if device is available)
+            if (deviceIdentifier != null)
             {
-                var screenshotPath = Path.Combine(artifactDir, "failure_screenshot.png");
-                
-                if (job.Platform == Platform.iOS && job.IosDevice != null)
+                try
                 {
-                    await _iosDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
-                }
-                else if (job.Platform == Platform.Android)
-                {
-                    await _androidDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
-                }
+                    var screenshotPath = Path.Combine(artifactDir, "failure_screenshot.png");
+                    
+                    if (job.Platform == Platform.iOS && job.IosDevice != null)
+                    {
+                        await _iosDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
+                    }
+                    else if (job.Platform == Platform.Android)
+                    {
+                        await _androidDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
+                    }
 
-                failureArtifacts.Add(new FailureArtifact
+                    failureArtifacts.Add(new FailureArtifact
+                    {
+                        Type = FailureArtifactType.Screenshot,
+                        Path = screenshotPath,
+                        Timestamp = DateTimeOffset.UtcNow
+                    });
+                }
+                catch (Exception ex)
                 {
-                    Type = FailureArtifactType.Screenshot,
-                    Path = screenshotPath,
-                    Timestamp = DateTimeOffset.UtcNow
-                });
+                    _logger.LogWarning(ex, "Failed to capture failure screenshot");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogWarning(ex, "Failed to capture failure screenshot");
+                _logger.LogInformation("Skipping failure screenshot capture - device not available (failure occurred before device preparation)");
             }
             
+            // Always try to capture device logs if device is available
+            if (deviceIdentifier != null)
+            {
+                try
+                {
+                    var logsPath = Path.Combine(artifactDir, "device_logs.txt");
+                    string deviceLogs;
+                    
+                    if (job.Platform == Platform.iOS && job.IosDevice != null)
+                    {
+                        deviceLogs = await _iosDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
+                    }
+                    else if (job.Platform == Platform.Android)
+                    {
+                        deviceLogs = await _androidDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
+                    }
+                    else
+                    {
+                        deviceLogs = "Device logs not available for this platform";
+                    }
+                    
+                    await File.WriteAllTextAsync(logsPath, deviceLogs, cancellationToken);
+                    
+                    failureArtifacts.Add(new FailureArtifact
+                    {
+                        Type = FailureArtifactType.DeviceLogs,
+                        Path = logsPath,
+                        Timestamp = DateTimeOffset.UtcNow
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to capture device logs");
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Skipping device logs capture - device not available (failure occurred before device preparation)");
+            }
         }
         catch (Exception ex)
         {
