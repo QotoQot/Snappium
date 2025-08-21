@@ -132,6 +132,16 @@ public class ConfigLoaderTests
             "en-US": {"Ios": "en_US", "Android": "en_US"},
             "es-ES": {"Ios": "es_ES", "Android": "es_ES"}
           },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
+          },
           "Screenshots": [
             {
               "Name": "01_home",
@@ -176,6 +186,16 @@ public class ConfigLoaderTests
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
           },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
+          },
           "Screenshots": [
             {
               "Name": "01_home",
@@ -213,6 +233,16 @@ public class ConfigLoaderTests
           "Languages": ["en-US"],
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
           },
           "Screenshots": [
             {
@@ -346,6 +376,16 @@ public class ConfigLoaderTests
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
           },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
+          },
           "Screenshots": [
             {
               "Name": "test",
@@ -377,6 +417,16 @@ public class ConfigLoaderTests
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
           },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
+          },
           "Screenshots": [
             {
               "Name": "test",
@@ -406,6 +456,16 @@ public class ConfigLoaderTests
           "Languages": ["en-US"],
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
           },
           "Screenshots": [
             {
@@ -437,6 +497,16 @@ public class ConfigLoaderTests
           "Languages": ["en-US"],
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
           },
           "Screenshots": [
             {
@@ -539,6 +609,16 @@ public class ConfigLoaderTests
           "Languages": ["en-US"],
           "LocaleMapping": {
             "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Artifacts": {
+            "Ios": {
+              "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+              "Package": "com.example.app"
+            },
+            "Android": {
+              "ArtifactGlob": "Android/bin/Release/net9.0-android/**/*.apk",
+              "Package": "com.example.app"
+            }
           },
           "Screenshots": [
             {
