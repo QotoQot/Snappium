@@ -267,26 +267,70 @@ public sealed class JobExecutor : IJobExecutor
         string deviceIdentifier,
         CancellationToken cancellationToken)
     {
-        if (cliOverrides?.NoBuild == true)
+        var buildMode = cliOverrides?.BuildMode ?? "auto";
+        var shouldBuild = false;
+
+        // Determine if we should build based on build mode
+        if (buildMode == "never" || cliOverrides?.NoBuild == true)
         {
             _logger.LogDebug("Skipping build due to --build never flag");
+            shouldBuild = false;
+        }
+        else if (buildMode == "always")
+        {
+            _logger.LogDebug("Building due to --build always flag");
+            shouldBuild = true;
+        }
+        else if (buildMode == "auto")
+        {
+            // Auto mode: build if no app path is provided or if app doesn't exist
+            var hasAppPath = job.Platform == Platform.iOS 
+                ? !string.IsNullOrEmpty(cliOverrides?.IosAppPath) || !string.IsNullOrEmpty(job.AppPath)
+                : !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath) || !string.IsNullOrEmpty(job.AppPath);
+            
+            if (!hasAppPath)
+            {
+                shouldBuild = true;
+                _logger.LogDebug("Building due to auto mode and no app path provided");
+            }
+            else
+            {
+                // Check if app exists
+                var appPath = job.Platform == Platform.iOS 
+                    ? cliOverrides?.IosAppPath ?? job.AppPath
+                    : cliOverrides?.AndroidAppPath ?? job.AppPath;
+                    
+                if (appPath != null && !File.Exists(appPath) && !Directory.Exists(appPath))
+                {
+                    shouldBuild = true;
+                    _logger.LogDebug("Building due to auto mode and app path does not exist: {Path}", appPath);
+                }
+                else
+                {
+                    shouldBuild = false;
+                    _logger.LogDebug("Skipping build due to auto mode and app path exists: {Path}", appPath);
+                }
+            }
+        }
+
+        if (!shouldBuild)
+        {
             return;
         }
 
-        string? appPath = job.AppPath;
+        string? builtAppPath = null;
 
-        // Use CLI override paths if provided
+        // Use CLI override paths if provided (only for display/validation, we're building anyway)
         if (job.Platform == Platform.iOS && !string.IsNullOrEmpty(cliOverrides?.IosAppPath))
         {
-            appPath = cliOverrides.IosAppPath;
-            _logger.LogDebug("Using CLI override iOS app path: {Path}", cliOverrides.IosAppPath);
+            _logger.LogDebug("CLI override iOS app path will be replaced by build output: {Path}", cliOverrides.IosAppPath);
         }
         else if (job.Platform == Platform.Android && !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath))
         {
-            appPath = cliOverrides.AndroidAppPath;
-            _logger.LogDebug("Using CLI override Android app path: {Path}", cliOverrides.AndroidAppPath);
+            _logger.LogDebug("CLI override Android app path will be replaced by build output: {Path}", cliOverrides.AndroidAppPath);
         }
-        else if (config.BuildConfig != null)
+        
+        if (config.BuildConfig != null)
         {
             // Build the project
             var platformBuildConfig = job.Platform == Platform.iOS ? config.BuildConfig.Ios : config.BuildConfig.Android;
@@ -295,7 +339,7 @@ public sealed class JobExecutor : IJobExecutor
                 var buildResult = await _buildService.BuildAsync(
                     job.Platform,
                     platformBuildConfig.Csproj,
-                    cliOverrides?.BuildConfiguration ?? "Release",
+                    "Release", // Always use Release configuration for screenshots
                     cancellationToken: cancellationToken);
 
                 if (!buildResult.Success)
@@ -312,21 +356,40 @@ public sealed class JobExecutor : IJobExecutor
                     throw new InvalidOperationException($"Could not find {searchPattern} artifact in {buildResult.OutputDirectory}");
                 }
 
-                appPath = artifactPath;
+                builtAppPath = artifactPath;
                 _logger.LogInformation("Built and discovered app: {Path}", artifactPath);
             }
         }
 
-        // Install the app
-        if (!string.IsNullOrEmpty(appPath))
+        // Install the app - use built app path if available, otherwise fall back to provided paths
+        string? finalAppPath = builtAppPath;
+        
+        if (string.IsNullOrEmpty(finalAppPath))
+        {
+            // Use CLI override paths if no built app
+            if (job.Platform == Platform.iOS && !string.IsNullOrEmpty(cliOverrides?.IosAppPath))
+            {
+                finalAppPath = cliOverrides.IosAppPath;
+            }
+            else if (job.Platform == Platform.Android && !string.IsNullOrEmpty(cliOverrides?.AndroidAppPath))
+            {
+                finalAppPath = cliOverrides.AndroidAppPath;
+            }
+            else
+            {
+                finalAppPath = job.AppPath;
+            }
+        }
+        
+        if (!string.IsNullOrEmpty(finalAppPath))
         {
             if (job.Platform == Platform.iOS && job.IosDevice != null)
             {
-                await _iosDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
+                await _iosDeviceManager.InstallAppAsync(deviceIdentifier, finalAppPath, cancellationToken);
             }
             else if (job.Platform == Platform.Android)
             {
-                await _androidDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
+                await _androidDeviceManager.InstallAppAsync(deviceIdentifier, finalAppPath, cancellationToken);
             }
         }
     }

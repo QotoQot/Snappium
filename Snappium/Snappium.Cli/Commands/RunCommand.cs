@@ -170,7 +170,7 @@ public class RunCommand : Command
                 OutputDirectory = output?.FullName,
                 BasePort = basePort,
                 NoBuild = noBuild,
-                BuildConfiguration = build
+                BuildMode = build
             };
 
             // Create run plan with port allocation

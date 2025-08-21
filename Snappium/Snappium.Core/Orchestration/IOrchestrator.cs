@@ -55,9 +55,9 @@ public sealed record CliOverrides
     public bool NoBuild { get; init; }
 
     /// <summary>
-    /// Override for build configuration.
+    /// Build mode: auto|always|never.
     /// </summary>
-    public string? BuildConfiguration { get; init; }
+    public string? BuildMode { get; init; }
 
     /// <summary>
     /// Override for Appium server URL.
