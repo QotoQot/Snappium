@@ -230,7 +230,7 @@ public sealed class JobExecutor : IJobExecutor
                 await _iosDeviceManager.SetStatusBarAsync(udidOrName, config.StatusBar.Ios, cancellationToken);
             }
 
-            if (config.AppReset?.Policy == "always")
+            if (config.AppReset?.Policy == "always" || config.AppReset?.Policy == "on_language_change")
             {
                 var bundleId = await DeviceHelpers.ExtractIosBundleIdAsync(job.AppPath);
                 await _iosDeviceManager.ResetAppDataAsync(udidOrName, bundleId, cancellationToken);
@@ -252,10 +252,10 @@ public sealed class JobExecutor : IJobExecutor
                 await _androidDeviceManager.SetStatusBarDemoModeAsync(deviceSerial, config.StatusBar.Android, cancellationToken);
             }
 
-            if (config.AppReset?.Policy == "always")
+            if (config.AppReset?.Policy == "always" || config.AppReset?.Policy == "on_language_change")
             {
-                var bundleId = DeviceHelpers.ExtractAndroidPackageName(job.AppPath);
-                await _androidDeviceManager.ResetAppDataAsync(deviceSerial, bundleId, cancellationToken);
+                var packageName = config.BuildConfig?.Android?.Package ?? throw new InvalidOperationException("Android package name must be configured for app reset");
+                await _androidDeviceManager.ResetAppDataAsync(deviceSerial, packageName, cancellationToken);
             }
             
             return deviceSerial;

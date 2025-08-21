@@ -33,7 +33,7 @@ public sealed class ScreenshotActionJsonConverter : JsonConverter<ScreenshotActi
         }
 
         // Handle wait_for action (both cases)
-        if (root.TryGetProperty("WaitFor", out waitForElement) || 
+        if (root.TryGetProperty("WaitFor", out var waitForElement) || 
             root.TryGetProperty("waitFor", out waitForElement))
         {
             var waitForConfig = JsonSerializer.Deserialize<WaitForConfig>(waitForElement, options)

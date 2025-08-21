@@ -70,11 +70,15 @@ public sealed class AppiumServerController : IAppiumServerController
             // Check if port is already in use by external process
             if (await IsServerRunningAsync(port, cancellationToken))
             {
-                _logger.LogWarning("Port {Port} is in use by external process, attempting to clean up", port);
-                await KillProcessOnPortAsync(port, cancellationToken);
+                _logger.LogInformation("Port {Port} is already in use by an existing Appium server, reusing it", port);
+                var externalServerUrl = $"http://localhost:{port}";
                 
-                // Wait a bit for cleanup
-                await Task.Delay(1000, cancellationToken);
+                return new AppiumServerResult
+                {
+                    Success = true,
+                    ServerUrl = externalServerUrl,
+                    ProcessId = null // External process, we don't manage it
+                };
             }
 
             // Start Appium server

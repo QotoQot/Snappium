@@ -128,8 +128,8 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         // Ensure Appium Settings app is installed and has permissions
         await _appiumSettingsHelper.EnsureInstalledAsync(deviceSerial, cancellationToken);
 
-        // Parse the locale format (e.g., "de" -> lang=de, country=DE or "de_DE" -> lang=de, country=DE)  
-        var parts = androidLocale.Split('_');
+        // Parse the locale format (e.g., "de" -> lang=de, country=DE or "de_DE"/"de-DE" -> lang=de, country=DE)  
+        var parts = androidLocale.Split(new char[] { '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
         var language = parts[0];
         var country = parts.Length > 1 ? parts[1].ToUpper() : language.ToUpper();
 
@@ -173,6 +173,13 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         if (!string.IsNullOrEmpty(statusBar.Wifi))
         {
             commands.Add(["shell", "am", "broadcast", "-a", "com.android.systemui.demo", "-e", "command", "network", "-e", "wifi", "show", "-e", "level", statusBar.Wifi]);
+        }
+
+        if (!string.IsNullOrEmpty(statusBar.Notifications))
+        {
+            // Convert "false" to "false", "true" to "true", other values as-is
+            var visible = statusBar.Notifications.ToLowerInvariant() == "false" ? "false" : "true";
+            commands.Add(["shell", "am", "broadcast", "-a", "com.android.systemui.demo", "-e", "command", "notifications", "-e", "visible", visible]);
         }
 
         foreach (var command in commands)
@@ -303,10 +310,9 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             ["platformName"] = "Android",
             ["platformVersion"] = device.PlatformVersion,
             ["deviceName"] = device.Name,
+            ["automationName"] = "UiAutomator2",
             ["avd"] = device.Avd,
             ["app"] = apkPath,
-            ["language"] = localeMapping.Android,
-            ["locale"] = localeMapping.Android,
             ["autoGrantPermissions"] = true,
             ["noReset"] = true,
             ["newCommandTimeout"] = 300,

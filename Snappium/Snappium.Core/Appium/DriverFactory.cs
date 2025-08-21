@@ -116,10 +116,30 @@ public sealed class DriverFactory : IDriverFactory
             _ => throw new ArgumentException($"Unsupported platform: {job.Platform}")
         };
 
-        // Add capabilities to options
+        // Add capabilities to options, handling special built-in properties
         foreach (var (key, value) in capabilities)
         {
-            options.AddAdditionalAppiumOption(key, value);
+            switch (key)
+            {
+                case "platformName":
+                    options.PlatformName = value?.ToString();
+                    break;
+                case "platformVersion":
+                    options.PlatformVersion = value?.ToString();
+                    break;
+                case "deviceName":
+                    options.DeviceName = value?.ToString();
+                    break;
+                case "automationName":
+                    options.AutomationName = value?.ToString();
+                    break;
+                case "app":
+                    options.App = value?.ToString();
+                    break;
+                default:
+                    options.AddAdditionalAppiumOption(key, value);
+                    break;
+            }
         }
 
         // Add port-specific capabilities if needed

@@ -259,32 +259,4 @@ public class DeviceHelpersTests
             }
         }
     }
-
-    [Test]
-    public void ExtractAndroidPackageName_ValidApk_ReturnsPackageName()
-    {
-        // Arrange
-        var tempFile = Path.GetTempFileName();
-        var apkPath = Path.ChangeExtension(tempFile, ".apk");
-        
-        try
-        {
-            File.Move(tempFile, apkPath);
-            File.WriteAllText(apkPath, "dummy content");
-
-            // Act
-            var result = DeviceHelpers.ExtractAndroidPackageName(apkPath);
-
-            // Assert
-            Assert.That(result, Does.StartWith("com.example."));
-            Assert.That(result, Does.EndWith(Path.GetFileNameWithoutExtension(apkPath).ToLowerInvariant()));
-        }
-        finally
-        {
-            if (File.Exists(apkPath))
-            {
-                File.Delete(apkPath);
-            }
-        }
-    }
 }

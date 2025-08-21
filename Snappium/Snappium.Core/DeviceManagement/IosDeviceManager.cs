@@ -231,6 +231,7 @@ public sealed class IosDeviceManager : IIosDeviceManager
             ["platformName"] = "iOS",
             ["platformVersion"] = device.PlatformVersion,
             ["deviceName"] = device.Name,
+            ["automationName"] = "XCUITest",
             ["udid"] = deviceId,
             ["app"] = appPath,
             ["language"] = localeMapping.Ios,

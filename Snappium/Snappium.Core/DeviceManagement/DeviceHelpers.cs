@@ -220,22 +220,4 @@ public static class DeviceHelpers
             throw new InvalidOperationException($"Invalid XML in Info.plist: {infoPlistPath}", ex);
         }
     }
-
-    /// <summary>
-    /// Extract the package name from an Android APK using aapt.
-    /// </summary>
-    /// <param name="apkPath">Path to the APK file</param>
-    /// <returns>Package name</returns>
-    public static string ExtractAndroidPackageName(string apkPath)
-    {
-        ValidateFilePath(apkPath, "Android APK");
-
-        // This is a simplified approach - in production you might want to parse AndroidManifest.xml
-        // or use a proper APK parsing library
-        var fileName = Path.GetFileNameWithoutExtension(apkPath);
-        
-        // For now, assume package name can be derived from filename or is provided separately
-        // This would need to be enhanced with actual aapt parsing
-        return $"com.example.{fileName}".ToLowerInvariant();
-    }
 }
