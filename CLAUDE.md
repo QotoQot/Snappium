@@ -128,6 +128,7 @@ Snappium orchestrates multiple external command-line tools:
 - `emulator`: Start/stop Android Virtual Devices
 - `adb`: Device communication (install, screenshot, settings)
 - Demo mode: `adb shell am broadcast` for status bar
+- **Appium Settings**: Bundled APK for reliable system locale changes on modern Android (API 34+)
 
 ### Build Tools
 - `dotnet build`: Compile iOS/Android projects

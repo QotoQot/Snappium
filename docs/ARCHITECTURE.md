@@ -200,7 +200,7 @@ snappium run \
   --platforms ios,android \        # Filter: only these platforms
   --devices iPhone15,Pixel7 \      # Filter: only these devices
   --langs en-US,es-ES \           # Filter: only these languages
-  --no-build \                    # Override: skip building
+  --build never \                 # Override: skip building
   --ios-app path/to/iOS.app \     # Override: use pre-built iOS app
   --android-app path/to/app.apk \ # Override: use pre-built Android app
   --output ./Screenshots \        # Override: custom output directory
@@ -339,6 +339,40 @@ adb pull /sdcard/screenshot.png output.png     # Download screenshot
 # Log capture  
 adb logcat -d -v time "*:W" "System.err:V"     # Capture device logs
 ```
+
+### Appium Settings Integration
+
+**Location**: `Snappium.Core/DeviceManagement/AppiumSettingsHelper.cs`
+
+Snappium integrates the [Appium Settings APK](https://github.com/appium/io.appium.settings) to provide reliable system configuration on modern Android versions (API 34+):
+
+**Key Features**:
+- **Automatic Installation**: Embedded APK is extracted and installed on Android devices when needed
+- **Permission Management**: Automatically grants required permissions (`CHANGE_CONFIGURATION`, `ACCESS_FINE_LOCATION`, etc.)
+- **Reliable Locale Changes**: Uses broadcast intents that work on modern Android versions
+- **Fallback Strategy**: Gracefully falls back to traditional adb methods if needed
+
+**Locale Change Flow**:
+```bash
+# Install Appium Settings APK (automatic)
+adb install -g settings_apk-debug.apk
+
+# Grant permissions (automatic)
+adb shell pm grant io.appium.settings android.permission.CHANGE_CONFIGURATION
+
+# Set locale via broadcast (primary method)
+adb shell am broadcast -a io.appium.settings.locale \
+  -n io.appium.settings/.receivers.LocaleSettingReceiver \
+  --es lang de --es country DE
+```
+
+**Why Appium Settings is Needed**:
+- Traditional `setprop` commands fail on Android API 34+ due to security restrictions
+- Direct system property modification requires root access not available on standard AVDs
+- Appium Settings uses proper Android APIs with correct permissions
+- Works consistently across different Android versions and device configurations
+
+**Bundled Version**: Snappium includes a tested version of the APK. For the latest updates, see: https://github.com/appium/io.appium.settings
 
 ### Process Management
 

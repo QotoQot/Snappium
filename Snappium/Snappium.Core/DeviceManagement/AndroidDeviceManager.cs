@@ -12,11 +12,14 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 {
     private readonly ICommandRunner _commandRunner;
     private readonly ILogger<AndroidDeviceManager> _logger;
+    private readonly AppiumSettingsHelper _appiumSettingsHelper;
 
     public AndroidDeviceManager(ICommandRunner commandRunner, ILogger<AndroidDeviceManager> logger)
     {
         _commandRunner = commandRunner;
         _logger = logger;
+        // Create AppiumSettingsHelper with a null logger for now
+        _appiumSettingsHelper = new AppiumSettingsHelper(commandRunner, Microsoft.Extensions.Logging.Abstractions.NullLogger<AppiumSettingsHelper>.Instance);
     }
 
     /// <inheritdoc />
@@ -122,30 +125,18 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         var androidLocale = localeMapping.Android;
         _logger.LogInformation("Setting Android emulator language to {Language} (locale: {Locale})", languageTag, androidLocale);
 
-        // Set the system locale
-        var localeResult = await RunAdbCommandAsync(
-            deviceSerial,
-            ["shell", "setprop", "persist.sys.locale", androidLocale],
-            timeout: TimeSpan.FromMinutes(1),
-            cancellationToken: cancellationToken);
+        // Ensure Appium Settings app is installed and has permissions
+        await _appiumSettingsHelper.EnsureInstalledAsync(deviceSerial, cancellationToken);
 
-        if (!localeResult.IsSuccess)
-        {
-            throw new InvalidOperationException($"Failed to set locale: {localeResult.StandardError}");
-        }
+        // Parse the locale format (e.g., "de" -> lang=de, country=DE or "de_DE" -> lang=de, country=DE)  
+        var parts = androidLocale.Split('_');
+        var language = parts[0];
+        var country = parts.Length > 1 ? parts[1].ToUpper() : language.ToUpper();
 
-        // Broadcast locale change
-        var broadcastResult = await RunAdbCommandAsync(
-            deviceSerial,
-            ["shell", "am", "broadcast", "-a", "android.intent.action.LOCALE_CHANGED"],
-            timeout: TimeSpan.FromMinutes(1),
-            cancellationToken: cancellationToken);
-
-        if (!broadcastResult.IsSuccess)
-        {
-            _logger.LogWarning("Failed to broadcast locale change: {Error}", broadcastResult.StandardError);
-        }
-
+        // Use Appium Settings to change locale - the reliable method for modern Android (API 34+)
+        await _appiumSettingsHelper.SetLocaleAsync(deviceSerial, language, country, cancellationToken);
+        
+        _logger.LogInformation("Successfully set Android locale to {Language}-{Country} using Appium Settings", language, country);
         _logger.LogDebug("Language configuration completed for {Serial}", deviceSerial);
     }
 

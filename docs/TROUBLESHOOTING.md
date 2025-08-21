@@ -1001,7 +1001,7 @@ Each job takes 10+ minutes to complete
    ```bash
    # Build once, reuse multiple times
    dotnet build iOS/iOS.csproj -c Release
-   snappium run --config config.json --no-build --ios-app path/to/iOS.app
+   snappium run --config config.json --build never --ios-app path/to/iOS.app
    ```
 
 ### Timeout Issues
@@ -1236,6 +1236,37 @@ Emulator takes 5+ minutes to boot
    avdmanager create avd -n "Pixel_7_API_34" \
      -k "system-images;android-34;google_apis_playstore;x86_64"
    ```
+
+**Problem**: Android locale setting warnings appear
+```
+warn: Failed to set locale property, trying alternative method: Failed to set property 'persist.sys.locale' to 'de_DE'
+warn: Alternative locale setting also failed, continuing anyway: Failed to set property 'persist.sys.language' to 'de'
+```
+
+**Solutions**:
+1. **This is expected behavior on modern Android versions (API 34+)**:
+   - Android security restrictions prevent adb from setting locale properties
+   - Snappium automatically uses the Appium Settings app for reliable locale changes
+   - Screenshots will still be taken successfully in the correct language
+
+2. **Snappium uses Appium Settings for reliable locale changes**:
+   - Automatically installs the Appium Settings APK on Android devices
+   - Uses broadcast intents to change system locale: `adb shell am broadcast -a io.appium.settings.locale`
+   - This is the recommended approach for modern Android versions
+   - For more information, see: https://github.com/appium/io.appium.settings
+
+3. **Verify locale is working**:
+   - Check your app screenshots show content in the correct language
+   - The system locale warnings are expected and don't affect functionality
+   - Appium capabilities + Appium Settings provide the most reliable locale handling
+
+4. **For testing purposes, you can verify**:
+   ```bash
+   adb shell getprop persist.sys.locale
+   # May still show default locale due to restrictions, but app locale will be correct
+   ```
+
+**Note**: Snappium includes a bundled version of the Appium Settings APK. For the latest version and updates, visit https://github.com/appium/io.appium.settings
 
 **Problem**: Android permissions dialogs interrupt automation
 ```

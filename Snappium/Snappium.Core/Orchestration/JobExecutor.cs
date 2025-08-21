@@ -273,7 +273,7 @@ public sealed class JobExecutor : IJobExecutor
     {
         if (cliOverrides?.NoBuild == true)
         {
-            _logger.LogDebug("Skipping build due to --no-build flag");
+            _logger.LogDebug("Skipping build due to --build never flag");
             return;
         }
 

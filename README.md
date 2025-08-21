@@ -218,7 +218,6 @@ snappium run --config screenshot_config.json [options]
 - `--screens home,settings`: Filter screenshots
 - `--output ./Screenshots`: Output directory
 - `--build auto|always|never`: Build mode
-- `--no-build`: Skip building apps
 - `--ios-app path/to/app.app`: iOS app path override
 - `--android-app path/to/app.apk`: Android app path override
 - `--base-port 4723`: Appium base port
@@ -438,7 +437,7 @@ snappium run --config config.json --build always --verbose
 
 ```bash
 # Use existing app builds
-snappium run --config config.json --no-build \
+snappium run --config config.json --build never \
   --ios-app ./iOS.app \
   --android-app ./app-release.apk
 ```

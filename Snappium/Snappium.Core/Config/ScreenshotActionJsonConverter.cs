@@ -14,32 +14,36 @@ public sealed class ScreenshotActionJsonConverter : JsonConverter<ScreenshotActi
         using var document = JsonDocument.ParseValue(ref reader);
         var root = document.RootElement;
 
-        // Handle tap action
-        if (root.TryGetProperty("tap", out var tapElement))
+        // Handle tap action (both cases)
+        if (root.TryGetProperty("Tap", out var tapElement) || 
+            root.TryGetProperty("tap", out tapElement))
         {
             var selector = JsonSerializer.Deserialize<Selector>(tapElement, options)
                 ?? throw new JsonException("Invalid tap selector");
             return new ScreenshotAction { Tap = selector };
         }
 
-        // Handle wait action
-        if (root.TryGetProperty("wait", out var waitElement))
+        // Handle wait action (both cases)
+        if (root.TryGetProperty("Wait", out var waitElement) || 
+            root.TryGetProperty("wait", out waitElement))
         {
             var waitConfig = JsonSerializer.Deserialize<WaitConfig>(waitElement, options)
                 ?? throw new JsonException("Invalid wait configuration");
             return new ScreenshotAction { Wait = waitConfig };
         }
 
-        // Handle wait_for action
-        if (root.TryGetProperty("wait_for", out var waitForElement))
+        // Handle wait_for action (both cases)
+        if (root.TryGetProperty("WaitFor", out waitForElement) || 
+            root.TryGetProperty("waitFor", out waitForElement))
         {
             var waitForConfig = JsonSerializer.Deserialize<WaitForConfig>(waitForElement, options)
                 ?? throw new JsonException("Invalid wait_for configuration");
             return new ScreenshotAction { WaitFor = waitForConfig };
         }
 
-        // Handle capture action
-        if (root.TryGetProperty("capture", out var captureElement))
+        // Handle capture action (both cases)
+        if (root.TryGetProperty("Capture", out var captureElement) || 
+            root.TryGetProperty("capture", out captureElement))
         {
             var captureConfig = JsonSerializer.Deserialize<CaptureConfig>(captureElement, options)
                 ?? throw new JsonException("Invalid capture configuration");
@@ -48,7 +52,7 @@ public sealed class ScreenshotActionJsonConverter : JsonConverter<ScreenshotActi
 
         // If no known action type was found, provide helpful error message
         var availableProperties = string.Join(", ", root.EnumerateObject().Select(prop => prop.Name));
-        throw new JsonException($"Unknown ScreenshotAction type. Found properties: [{availableProperties}]. Expected one of: tap, wait, wait_for, capture");
+        throw new JsonException($"Unknown ScreenshotAction type. Found properties: [{availableProperties}]. Expected one of: Tap, Wait, WaitFor, Capture");
     }
 
     public override void Write(Utf8JsonWriter writer, ScreenshotAction value, JsonSerializerOptions options)
@@ -58,22 +62,22 @@ public sealed class ScreenshotActionJsonConverter : JsonConverter<ScreenshotActi
         // Write the appropriate action type
         if (value.Tap != null)
         {
-            writer.WritePropertyName("tap");
+            writer.WritePropertyName("Tap");
             JsonSerializer.Serialize(writer, value.Tap, options);
         }
         else if (value.Wait != null)
         {
-            writer.WritePropertyName("wait");
+            writer.WritePropertyName("Wait");
             JsonSerializer.Serialize(writer, value.Wait, options);
         }
         else if (value.WaitFor != null)
         {
-            writer.WritePropertyName("wait_for");
+            writer.WritePropertyName("WaitFor");
             JsonSerializer.Serialize(writer, value.WaitFor, options);
         }
         else if (value.Capture != null)
         {
-            writer.WritePropertyName("capture");
+            writer.WritePropertyName("Capture");
             JsonSerializer.Serialize(writer, value.Capture, options);
         }
         else
