@@ -21,22 +21,17 @@ This comprehensive troubleshooting guide helps you diagnose and resolve common i
 
 ### First Steps for Any Issue
 
-1. **Run with verbose logging**:
-   ```bash
-   snappium run --config config.json --verbose
-   ```
-
-2. **Validate your configuration**:
+1. **Validate your configuration**:
    ```bash
    snappium validate-config --config config.json
    ```
 
-3. **Test with dry run**:
+2. **Test with dry run**:
    ```bash
    snappium run --config config.json --dry-run
    ```
 
-4. **Check tool versions**:
+3. **Check tool versions**:
    ```bash
    dotnet --version          # Should be 9.0+
    appium --version          # Should be 2.0+
@@ -286,20 +281,20 @@ JSON deserialization for type 'IosDeviceDto' was missing required properties inc
 1. **Check required fields** (see [sample config](../samples/screenshot_config.json)):
    ```json
    {
-     "devices": {
-       "ios": [
+     "Devices": {
+       "Ios": [
          {
-           "name": "iPhone 15",           // Required
-           "folder": "iPhone_15_6.1",     // Required
+           "Name": "iPhone 15",           // Required
+           "Folder": "iPhone_15_6.1",     // Required
            "PlatformVersion": "17.5"      // Required (note: PascalCase)
          }
        ]
      },
-     "languages": ["en-US"],             // Required
+     "Languages": ["en-US"],             // Required
      "LocaleMapping": {                  // Required (note: PascalCase)
        "en-US": {"ios": "en_US", "android": "en_US"}
      },
-     "screenshots": [...]                // Required
+     "Screenshots": [...]                // Required
    }
    ```
 
@@ -328,19 +323,19 @@ Device 'iPhone 15 Pro Max Ultra' not found in available simulators
 3. **Use exact names from device lists**:
    ```json
    {
-     "devices": {
-       "ios": [
+     "Devices": {
+       "Ios": [
          {
-           "name": "iPhone 15",              // Must match simulator name
-           "folder": "iPhone_15_6.1",
+           "Name": "iPhone 15",              // Must match simulator name
+           "Folder": "iPhone_15_6.1",
            "PlatformVersion": "17.5"
          }
        ],
-       "android": [
+       "Android": [
          {
-           "name": "Pixel 7",
-           "avd": "Pixel_7_API_34",          // Must match AVD name
-           "folder": "Phone_6.1",
+           "Name": "Pixel 7",
+           "Avd": "Pixel_7_API_34",          // Must match AVD name
+           "Folder": "Phone_6.1",
            "PlatformVersion": "14"
          }
        ]
@@ -764,15 +759,19 @@ Element not found: AccessibilityId 'settings-button'
 3. **Add waits before element interaction**:
    ```json
    {
-     "actions": [
+     "Actions": [
        {
-         "wait_for": {
-           "timeout": 10000,
-           "selector": {"AccessibilityId": "settings-button"}
+         "WaitFor": {
+           "TimeoutMs": 10000,
+           "Ios": {"AccessibilityId": "settings-button"},
+           "Android": {"AccessibilityId": "settings_button"}
          }
        },
        {
-         "tap": {"AccessibilityId": "settings-button"}
+         "Tap": {
+           "Ios": {"AccessibilityId": "settings-button"},
+           "Android": {"AccessibilityId": "settings_button"}
+         }
        }
      ]
    }
@@ -796,14 +795,20 @@ Element 'login-button' worked yesterday but not today
    // Create multiple screenshot plans for different app versions
    {
      "name": "login_v1",
-     "actions": [
-       {"tap": {"AccessibilityId": "login-button"}}
+     "Actions": [
+       {"Tap": {
+         "Ios": {"AccessibilityId": "login-button"},
+         "Android": {"AccessibilityId": "login_button"}
+       }}
      ]
    },
    {
      "name": "login_v2", 
-     "actions": [
-       {"tap": {"AccessibilityId": "loginButton"}}
+     "Actions": [
+       {"Tap": {
+         "Ios": {"AccessibilityId": "loginButton"},
+         "Android": {"AccessibilityId": "loginButton"}
+       }}
      ]
    }
    ```
@@ -829,9 +834,9 @@ Screenshot captured but image is empty/black
 2. **Add delays before screenshot**:
    ```json
    {
-     "actions": [
-       {"wait": {"seconds": 2}},           // Wait for UI to settle
-       {"capture": {"name": "screen"}}
+     "Actions": [
+       {"Wait": {"Seconds": 2}},           // Wait for UI to settle
+       {"Capture": {"Name": "screen"}}
      ]
    }
    ```
@@ -870,18 +875,22 @@ Could not navigate to settings screen - app crashed
 2. **Use more robust navigation**:
    ```json
    {
-     "actions": [
+     "Actions": [
        // Wait for app to fully load
        {
-         "wait_for": {
-           "timeout": 15000,
-           "selector": {"AccessibilityId": "main-screen"}
+         "WaitFor": {
+           "TimeoutMs": 15000,
+           "Ios": {"AccessibilityId": "main-screen"},
+           "Android": {"AccessibilityId": "main_screen"}
          }
        },
        // Small delay for animations
-       {"wait": {"seconds": 1}},
+       {"Wait": {"Seconds": 1}},
        // Then navigate
-       {"tap": {"AccessibilityId": "settings-tab"}}
+       {"Tap": {
+         "Ios": {"AccessibilityId": "settings-tab"},
+         "Android": {"AccessibilityId": "settings_tab"}
+       }}
      ]
    }
    ```
@@ -1016,16 +1025,17 @@ Timeout waiting for element 'loading-indicator' to disappear
 2. **Optimize wait strategies**:
    ```json
    {
-     "actions": [
+     "Actions": [
        // Wait for loading to finish
        {
-         "wait_for": {
-           "timeout": 30000,
-           "selector": {"AccessibilityId": "content-loaded"}
+         "WaitFor": {
+           "TimeoutMs": 30000,
+           "Ios": {"AccessibilityId": "content-loaded"},
+           "Android": {"AccessibilityId": "content_loaded"}
          }
        },
        // Then capture
-       {"capture": {"name": "screen"}}
+       {"Capture": {"Name": "screen"}}
      ]
    }
    ```
@@ -1105,8 +1115,8 @@ Appium servers or emulators still running after job completion
 
 3. **Verify process manager functionality**:
    ```bash
-   # Run with verbose logging to see cleanup messages
-   snappium run --config config.json --verbose
+   # Run to see cleanup messages (verbose logging is always enabled)
+   snappium run --config config.json
    # Look for "Process cleanup completed" messages
    ```
 
@@ -1159,10 +1169,13 @@ Cannot tap element - keyboard is covering it
 1. **Dismiss keyboard before screenshots**:
    ```json
    {
-     "actions": [
-       {"tap": {"AccessibilityId": "keyboard-dismiss"}},
-       {"wait": {"seconds": 1}},
-       {"capture": {"name": "screen"}}
+     "Actions": [
+       {"Tap": {
+         "Ios": {"AccessibilityId": "keyboard-dismiss"},
+         "Android": {"AccessibilityId": "keyboard_dismiss"}
+       }},
+       {"Wait": {"Seconds": 1}},
+       {"Capture": {"Name": "screen"}}
      ]
    }
    ```
@@ -1263,9 +1276,9 @@ Permission dialog appears during screenshot capture
    appium server --port 4723 --log-level debug
    ```
 
-2. **Snappium verbose output**:
+2. **Snappium detailed output** (always enabled):
    ```bash
-   snappium run --config config.json --verbose
+   snappium run --config config.json
    ```
 
 3. **Enable device logs**:
@@ -1325,7 +1338,7 @@ When reporting issues, collect:
 
 2. **Configuration files**:
    - Your `screenshot_config.json`
-   - Any error logs from `--verbose` output
+   - Any error logs from command output
 
 3. **Device information**:
    ```bash
@@ -1356,4 +1369,4 @@ If you're still having issues:
    - .NET documentation: https://docs.microsoft.com/dotnet/
    - Mobile development forums
 
-Remember: Most issues are related to environment setup, configuration syntax, or device/app state. Work through the troubleshooting steps systematically, and use verbose logging to understand what's happening at each step.
+Remember: Most issues are related to environment setup, configuration syntax, or device/app state. Work through the troubleshooting steps systematically, and use the detailed logging output to understand what's happening at each step.

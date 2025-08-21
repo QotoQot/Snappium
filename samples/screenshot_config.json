@@ -1,71 +1,73 @@
 {
-  "devices": {
-    "ios": [
+  "Devices": {
+    "Ios": [
       {
-        "name": "iPhone 15",
-        "udid": null,
-        "folder": "iPhone_15_6.1",
+        "Name": "iPhone 15",
+        "Udid": null,
+        "Folder": "iPhone_15_6.1",
         "PlatformVersion": "17.5"
       }
     ],
-    "android": [
+    "Android": [
       {
-        "name": "Pixel 7",
-        "avd": "Pixel_7_API_34",
-        "folder": "Phone_6.1",
+        "Name": "Pixel 7",
+        "Avd": "Pixel_7_API_34",
+        "Folder": "Phone_6.1",
         "PlatformVersion": "14"
       }
     ]
   },
-  "languages": ["en-US"],
+  "Languages": ["en-US", "es-ES"],
   "LocaleMapping": {
-    "en-US": {"ios": "en_US", "android": "en_US"}
+    "en-US": {"ios": "en_US", "android": "en_US"},
+    "es-ES": {"ios": "es_ES", "android": "es_ES"}
   },
   "BuildConfig": {
-    "ios": {
+    "Ios": {
       "Csproj": "iOS/iOS.csproj",
       "Tfm": "net9.0-ios",
       "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
     },
-    "android": {
+    "Android": {
       "Csproj": "Droid/Droid.csproj", 
       "Tfm": "net9.0-android",
       "ArtifactGlob": "Droid/bin/Release/**/*.apk",
       "Package": "com.example.app"
     }
   },
-  "screenshots": [
+  "Screenshots": [
     {
-      "name": "01_home",
-      "orientation": "portrait",
-      "actions": [
+      "Name": "01_home",
+      "Orientation": "portrait",
+      "Actions": [
         {
-          "wait_for": {
-            "timeout": 5000,
-            "selector": {"AccessibilityId": "main-view"}
+          "WaitFor": {
+            "Ios": {"AccessibilityId": "main-view"},
+            "Android": {"AccessibilityId": "main_view"},
+            "TimeoutMs": 5000
           }
         },
-        {"capture": {"name": "01_home"}}
-      ],
-      "assert": {
-        "ios": {"AccessibilityId": "main-view"},
-        "android": {"AccessibilityId": "main_view"}
-      }
+        {"Capture": {"Name": "01_home"}}
+      ]
     },
     {
-      "name": "02_settings",
-      "orientation": "portrait",
-      "actions": [
+      "Name": "02_settings",
+      "Orientation": "portrait",
+      "Actions": [
         {
-          "tap": {"AccessibilityId": "settings-button"}
-        },
-        {
-          "wait_for": {
-            "timeout": 3000,
-            "selector": {"AccessibilityId": "settings-view"}
+          "Tap": {
+            "Ios": {"AccessibilityId": "settings-button"},
+            "Android": {"AccessibilityId": "settings_button"}
           }
         },
-        {"capture": {"name": "02_settings"}}
+        {
+          "WaitFor": {
+            "Ios": {"AccessibilityId": "settings-view"},
+            "Android": {"AccessibilityId": "settings_view"},
+            "TimeoutMs": 5000
+          }
+        },
+        {"Capture": {"Name": "02_settings"}}
       ]
     }
   ],
@@ -91,13 +93,13 @@
     "ArtifactsDir": "failure_artifacts"
   },
   "StatusBar": {
-    "ios": {
+    "Ios": {
       "Time": "9:41",
       "WifiBars": 3,
       "CellularBars": 4,
       "BatteryState": "charged"
     },
-    "android": {
+    "Android": {
       "DemoMode": true,
       "Clock": "1200",
       "Battery": 100,
@@ -108,13 +110,13 @@
   "Validation": {
     "EnforceImageSize": false,
     "ExpectedSizes": {
-      "ios": {
+      "Ios": {
         "iPhone_15_6.1": {
           "Portrait": [393, 852],
           "Landscape": [852, 393]
         }
       },
-      "android": {
+      "Android": {
         "Phone_6.1": {
           "Portrait": [412, 915],
           "Landscape": [915, 412]
@@ -123,21 +125,21 @@
     }
   },
   "Capabilities": {
-    "ios": {
+    "Ios": {
       "showXcodeLog": false,
       "resetOnSessionStartOnly": true
     },
-    "android": {
+    "Android": {
       "autoGrantPermissions": true,
       "noReset": false
     }
   },
   "Dismissors": {
-    "ios": [
+    "Ios": [
       {"AccessibilityId": "Allow"},
       {"AccessibilityId": "OK"}
     ],
-    "android": [
+    "Android": [
       {"Id": "android:id/button1"},
       {"Id": "com.android.permissioncontroller:id/permission_allow_button"}
     ]

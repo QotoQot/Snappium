@@ -169,9 +169,9 @@ Structure actions logically:
 The test suite uses NUnit with parameterized tests that cover all platform/device/language combinations. Tests extensively use Moq for mocking external dependencies.
 
 ### Debug Logging
-Enable verbose mode for detailed execution tracing:
+Verbose mode is always enabled for detailed execution tracing, just run:
 ```bash
-snappium run --config config.json --verbose
+snappium run --config config.json
 ```
 
 This provides:

@@ -97,14 +97,14 @@ public class BuildServiceTests
         // Assert - Should be called twice: once for build, once for getting output path
         _commandRunnerMock.Verify(x => x.RunAsync(
             "dotnet",
-            It.Is<string[]>(args => args.Contains("build") && args.Contains("-p:RuntimeIdentifier=ios-arm64")),
+            It.Is<string[]>(args => args.Contains("build") && args.Contains("-p:RuntimeIdentifier=iossimulator-arm64")),
             It.IsAny<string?>(),
             It.IsAny<TimeSpan?>(),
             It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet build with iOS runtime identifier");
             
         _commandRunnerMock.Verify(x => x.RunAsync(
             "dotnet",
-            It.Is<string[]>(args => args.Contains("msbuild") && args.Contains("-getProperty:OutputPath") && args.Contains("-p:RuntimeIdentifier=ios-arm64")),
+            It.Is<string[]>(args => args.Contains("msbuild") && args.Contains("-getProperty:OutputPath") && args.Contains("-p:RuntimeIdentifier=iossimulator-arm64")),
             It.IsAny<string?>(),
             It.IsAny<TimeSpan?>(),
             It.IsAny<CancellationToken>()), Times.Once, "Should call dotnet msbuild to get output path with iOS runtime identifier");

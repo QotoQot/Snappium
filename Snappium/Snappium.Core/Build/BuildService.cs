@@ -38,6 +38,7 @@ public sealed class BuildService : IBuildService
         }
 
         _logger.LogInformation("Building {Platform} project: {Project}", platform, csprojPath);
+        _logger.LogDebug("Build configuration: {Configuration}, Target framework: {TargetFramework}", configuration, targetFramework ?? "default");
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -47,19 +48,24 @@ public sealed class BuildService : IBuildService
             if (!string.IsNullOrEmpty(targetFramework))
             {
                 args.AddRange(["-f", targetFramework]);
+                _logger.LogDebug("Added target framework argument: {TargetFramework}", targetFramework);
             }
 
             // Add platform-specific arguments
             if (platform == Platform.iOS)
             {
                 // iOS builds may need specific runtime identifiers
-                args.AddRange(["-p:RuntimeIdentifier=ios-arm64"]);
+                args.AddRange(["-p:RuntimeIdentifier=iossimulator-arm64"]);
+                _logger.LogDebug("Added iOS-specific arguments: RuntimeIdentifier=iossimulator-arm64");
             }
             else if (platform == Platform.Android)
             {
                 // Android builds may need specific properties
                 args.AddRange(["-p:AndroidUseAapt2=true"]);
+                _logger.LogDebug("Added Android-specific arguments: AndroidUseAapt2=true");
             }
+
+            _logger.LogDebug("Executing dotnet build command: dotnet {Args}", string.Join(" ", args));
 
             var result = await _commandRunner.RunAsync(
                 "dotnet",
@@ -72,9 +78,11 @@ public sealed class BuildService : IBuildService
             if (result.ExitCode == 0)
             {
                 _logger.LogInformation("Build completed successfully in {Duration}ms", stopwatch.ElapsedMilliseconds);
+                _logger.LogDebug("Build stdout output: {Output}", result.StandardOutput);
                 
                 // Get actual output directory from MSBuild instead of guessing
                 var outputDir = await GetOutputDirectoryFromMSBuildAsync(csprojPath, configuration, targetFramework, platform, cancellationToken);
+                _logger.LogDebug("Determined output directory: {OutputDir}", outputDir);
                 
                 return new BuildResult
                 {
@@ -86,6 +94,7 @@ public sealed class BuildService : IBuildService
             else
             {
                 _logger.LogError("Build failed with exit code {ExitCode}: {Error}", result.ExitCode, result.StandardError);
+                _logger.LogDebug("Build stdout output: {Output}", result.StandardOutput);
                 return new BuildResult
                 {
                     Success = false,
@@ -176,7 +185,7 @@ public sealed class BuildService : IBuildService
             // Add platform-specific properties to match build configuration
             if (platform == Platform.iOS)
             {
-                args.Add("-p:RuntimeIdentifier=ios-arm64");
+                args.Add("-p:RuntimeIdentifier=iossimulator-arm64");
             }
             else if (platform == Platform.Android)
             {

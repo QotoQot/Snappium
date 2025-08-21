@@ -110,42 +110,42 @@ Snappium uses a JSON configuration file that defines devices, languages, screens
 
 ```json
 {
-  "devices": {
-    "ios": [
+  "Devices": {
+    "Ios": [
       {
-        "name": "iPhone 15",
-        "udid": null,
-        "folder": "iPhone_15_6.1",
-        "platform_version": "17.5"
+        "Name": "iPhone 15",
+        "Udid": null,
+        "Folder": "iPhone_15_6.1",
+        "PlatformVersion": "17.5"
       }
     ],
-    "android": [
+    "Android": [
       {
-        "name": "Pixel 7",
-        "avd": "Pixel_7_API_34",
-        "folder": "Phone_6.1",
-        "platform_version": "14"
+        "Name": "Pixel 7",
+        "Avd": "Pixel_7_API_34",
+        "Folder": "Phone_6.1",
+        "PlatformVersion": "14"
       }
     ]
   },
-  "languages": ["en-US", "es-ES"],
-  "locale_mapping": {
+  "Languages": ["en-US", "es-ES"],
+  "LocaleMapping": {
     "en-US": {"ios": "en_US", "android": "en_US"},
     "es-ES": {"ios": "es_ES", "android": "es_ES"}
   },
-  "screenshots": [
+  "Screenshots": [
     {
-      "name": "01_home",
-      "orientation": "portrait",
-      "actions": [
+      "Name": "01_home",
+      "Orientation": "portrait",
+      "Actions": [
         {
-          "wait_for": {
-            "ios": {"accessibility_id": "main-view"},
-            "android": {"accessibility_id": "main_view"},
-            "timeout_ms": 5000
+          "WaitFor": {
+            "Ios": {"AccessibilityId": "main-view"},
+            "Android": {"AccessibilityId": "main_view"},
+            "TimeoutMs": 5000
           }
         },
-        {"capture": {"name": "01_home"}}
+        {"Capture": {"Name": "01_home"}}
       ]
     }
   ]
@@ -159,9 +159,9 @@ Snappium supports various actions for navigation:
 #### Tap Action
 ```json
 {
-  "tap": {
-    "ios": {"accessibility_id": "button-id"},
-    "android": {"accessibility_id": "button_id"}
+  "Tap": {
+    "Ios": {"AccessibilityId": "button-id"},
+    "Android": {"AccessibilityId": "button_id"}
   }
 }
 ```
@@ -176,10 +176,10 @@ Snappium supports various actions for navigation:
 #### Wait For Element
 ```json
 {
-  "wait_for": {
-    "ios": {"xpath": "//XCUIElementTypeButton[@name='Continue']"},
-    "android": {"id": "com.example:id/continue_button"},
-    "timeout_ms": 5000
+  "WaitFor": {
+    "Ios": {"Xpath": "//XCUIElementTypeButton[@name='Continue']"},
+    "Android": {"Id": "com.example:id/continue_button"},
+    "TimeoutMs": 5000
   }
 }
 ```
@@ -187,7 +187,7 @@ Snappium supports various actions for navigation:
 #### Capture Screenshot
 ```json
 {
-  "capture": {"name": "screen_name"}
+  "Capture": {"Name": "screen_name"}
 }
 ```
 
@@ -247,17 +247,17 @@ Snappium can automatically build your apps before taking screenshots:
 
 ```json
 {
-  "build_config": {
-    "ios": {
-      "csproj": "iOS/iOS.csproj",
-      "tfm": "net9.0-ios",
-      "artifact_glob": "iOS/bin/Release/**/iOS.app"
+  "BuildConfig": {
+    "Ios": {
+      "Csproj": "iOS/iOS.csproj",
+      "Tfm": "net9.0-ios",
+      "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
     },
-    "android": {
-      "csproj": "Droid/Droid.csproj", 
-      "tfm": "net9.0-android",
-      "artifact_glob": "Droid/bin/Release/**/*.apk",
-      "package": "com.example.app"
+    "Android": {
+      "Csproj": "Droid/Droid.csproj", 
+      "Tfm": "net9.0-android",
+      "ArtifactGlob": "Droid/bin/Release/**/*.apk",
+      "Package": "com.example.app"
     }
   }
 }
@@ -271,18 +271,18 @@ Configure demo status bars:
 
 ```json
 {
-  "status_bar": {
-    "ios": {
-      "time": "9:41",
-      "wifi_bars": 3,
-      "cellular_bars": 4,
-      "battery_state": "charged"
+  "StatusBar": {
+    "Ios": {
+      "Time": "9:41",
+      "WifiBars": 3,
+      "CellularBars": 4,
+      "BatteryState": "charged"
     },
-    "android": {
-      "demo_mode": true,
-      "clock": "1200",
-      "battery": 100,
-      "wifi": "4"
+    "Android": {
+      "DemoMode": true,
+      "Clock": "1200",
+      "Battery": 100,
+      "Wifi": "4"
     }
   }
 }
@@ -294,10 +294,10 @@ Control app data between runs:
 
 ```json
 {
-  "app_reset": {
-    "policy": "on_language_change",
-    "clear_data_on_language_change": true,
-    "reinstall_vs_relaunch": "relaunch"
+  "AppReset": {
+    "Policy": "on_language_change",
+    "ClearDataOnLanguageChange": true,
+    "ReinstallVsRelaunch": "relaunch"
   }
 }
 ```
@@ -308,13 +308,13 @@ Validate screenshot dimensions:
 
 ```json
 {
-  "validation": {
-    "enforce_image_size": true,
-    "expected_sizes": {
-      "ios": {
+  "Validation": {
+    "EnforceImageSize": true,
+    "ExpectedSizes": {
+      "Ios": {
         "iPhone_15_6.1": {
-          "portrait": [393, 852],
-          "landscape": [852, 393]
+          "Portrait": [393, 852],
+          "Landscape": [852, 393]
         }
       }
     }
@@ -328,11 +328,11 @@ Automatic failure debugging:
 
 ```json
 {
-  "failure_artifacts": {
-    "save_page_source": true,
-    "save_screenshot": true,
-    "save_device_logs": true,
-    "artifacts_dir": "failure_artifacts"
+  "FailureArtifacts": {
+    "SavePageSource": true,
+    "SaveScreenshot": true,
+    "SaveDeviceLogs": true,
+    "ArtifactsDir": "failure_artifacts"
   }
 }
 ```
@@ -343,13 +343,13 @@ Automatically dismiss common popups:
 
 ```json
 {
-  "dismissors": {
-    "ios": [
-      {"accessibility_id": "Allow"},
-      {"accessibility_id": "OK"}
+  "Dismissors": {
+    "Ios": [
+      {"AccessibilityId": "Allow"},
+      {"AccessibilityId": "OK"}
     ],
-    "android": [
-      {"id": "android:id/button1"}
+    "Android": [
+      {"Id": "android:id/button1"}
     ]
   }
 }

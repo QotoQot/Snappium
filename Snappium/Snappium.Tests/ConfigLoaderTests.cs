@@ -225,4 +225,330 @@ public class ConfigLoaderTests
         }
         """;
     }
+
+    // Enhanced validation tests
+    [Test]
+    public async Task LoadAsync_DeviceNameWithQuotes_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithQuotes = CreateConfigWithDeviceNameQuotes();
+        await File.WriteAllTextAsync(configPath, configWithQuotes);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("contains quotes which may cause command execution issues"));
+    }
+
+    [Test]
+    public async Task LoadAsync_AndroidAvdWithSpaces_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithSpaces = CreateConfigWithAndroidAvdSpaces();
+        await File.WriteAllTextAsync(configPath, configWithSpaces);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("contains spaces which may cause emulator issues"));
+    }
+
+    [Test]
+    public async Task LoadAsync_InvalidIosPlatformVersion_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithBadVersion = CreateConfigWithInvalidIosPlatformVersion();
+        await File.WriteAllTextAsync(configPath, configWithBadVersion);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("has invalid platform version format"));
+        Assert.That(ex.Message, Does.Contain("should be like '18.5'"));
+    }
+
+    [Test]
+    public async Task LoadAsync_InvalidAndroidPlatformVersion_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithBadVersion = CreateConfigWithInvalidAndroidPlatformVersion();
+        await File.WriteAllTextAsync(configPath, configWithBadVersion);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("has invalid platform version format"));
+        Assert.That(ex.Message, Does.Contain("should be a number like '34'"));
+    }
+
+    [Test]
+    public async Task LoadAsync_EmptySelectors_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithEmptySelectors = CreateConfigWithEmptySelectors();
+        await File.WriteAllTextAsync(configPath, configWithEmptySelectors);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("has selector with no valid locator strategy"));
+    }
+
+    [Test]
+    public async Task LoadAsync_InvalidXPathSelector_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithInvalidXPath = CreateConfigWithInvalidXPath();
+        await File.WriteAllTextAsync(configPath, configWithInvalidXPath);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("has invalid XPath selector"));
+        Assert.That(ex.Message, Does.Contain("should start with '/' or '('"));
+    }
+
+    [Test]
+    public async Task LoadAsync_EmptyAndroidAvd_ThrowsException()
+    {
+        // Arrange
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var configWithEmptyAvd = CreateConfigWithEmptyAndroidAvd();
+        await File.WriteAllTextAsync(configPath, configWithEmptyAvd);
+
+        // Act & Assert
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(
+            () => _configLoader.LoadAsync(configPath));
+        Assert.That(ex.Message, Does.Contain("has empty AVD name"));
+    }
+
+    private static string CreateConfigWithDeviceNameQuotes()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [
+              {
+                "Name": "iPhone \"with quotes\"",
+                "Folder": "iPhone_Test",
+                "PlatformVersion": "18.0"
+              }
+            ],
+            "Android": []
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithAndroidAvdSpaces()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [],
+            "Android": [
+              {
+                "Name": "Test Device",
+                "Avd": "test device with spaces",
+                "Folder": "Android_Test",
+                "PlatformVersion": "34"
+              }
+            ]
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithInvalidIosPlatformVersion()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [
+              {
+                "Name": "iPhone 16",
+                "Folder": "iPhone_Test",
+                "PlatformVersion": "not.a.version"
+              }
+            ],
+            "Android": []
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithInvalidAndroidPlatformVersion()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [],
+            "Android": [
+              {
+                "Name": "Test Device",
+                "Avd": "test_device",
+                "Folder": "Android_Test",
+                "PlatformVersion": "API34"
+              }
+            ]
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithEmptySelectors()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [
+              {
+                "Name": "iPhone 16",
+                "Folder": "iPhone_Test",
+                "PlatformVersion": "18.0"
+              }
+            ],
+            "Android": []
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {
+                  "wait_for": {
+                    "timeout": 5000,
+                    "selector": {}
+                  }
+                },
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithInvalidXPath()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [
+              {
+                "Name": "iPhone 16",
+                "Folder": "iPhone_Test",
+                "PlatformVersion": "18.0"
+              }
+            ],
+            "Android": []
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {
+                  "tap": {
+                    "xpath": "invalid_xpath_format"
+                  }
+                },
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
+
+    private static string CreateConfigWithEmptyAndroidAvd()
+    {
+        return """
+        {
+          "Devices": {
+            "Ios": [],
+            "Android": [
+              {
+                "Name": "Test Device",
+                "Avd": "",
+                "Folder": "Android_Test",
+                "PlatformVersion": "34"
+              }
+            ]
+          },
+          "Languages": ["en-US"],
+          "LocaleMapping": {
+            "en-US": {"Ios": "en_US", "Android": "en_US"}
+          },
+          "Screenshots": [
+            {
+              "Name": "test",
+              "Actions": [
+                {"capture": {"name": "test"}}
+              ]
+            }
+          ]
+        }
+        """;
+    }
 }

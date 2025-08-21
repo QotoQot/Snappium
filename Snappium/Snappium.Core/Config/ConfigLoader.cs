@@ -110,6 +110,15 @@ public sealed class ConfigLoader
         // Validate screenshot actions
         await ValidateScreenshotActionsAsync(config, errors, cancellationToken);
 
+        // Validate device configurations
+        await ValidateDeviceConfigurationsAsync(config, errors, cancellationToken);
+
+        // Validate selector configurations
+        await ValidateSelectorConfigurationsAsync(config, errors, cancellationToken);
+
+        // Validate platform version formats
+        await ValidatePlatformVersionsAsync(config, errors, cancellationToken);
+
         if (errors.Count > 0)
         {
             var message = $"Semantic validation failed:\n{string.Join("\n", errors.Select(e => $"  • {e}"))}";
@@ -182,6 +191,142 @@ public sealed class ConfigLoader
             if (!hasCapture)
             {
                 _logger.LogWarning("Screenshot '{ScreenshotName}' has no capture action", screenshot.Name);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Validate device configurations for potential issues.
+    /// </summary>
+    private Task ValidateDeviceConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    {
+        // Validate iOS device names don't contain problematic characters
+        foreach (var device in config.Devices.Ios)
+        {
+            if (device.Name.Contains("\"") || device.Name.Contains("'"))
+            {
+                errors.Add($"iOS device name '{device.Name}' contains quotes which may cause command execution issues");
+            }
+            
+            if (device.Name.Length > 100)
+            {
+                errors.Add($"iOS device name '{device.Name}' is too long (>100 characters)");
+            }
+            
+            // Check for common iOS simulator naming patterns
+            if (!device.Name.Contains("iPhone") && !device.Name.Contains("iPad") && !device.Name.Contains("Apple"))
+            {
+                _logger.LogWarning("iOS device name '{DeviceName}' doesn't follow typical simulator naming pattern", device.Name);
+            }
+        }
+
+        // Validate Android device configurations
+        foreach (var device in config.Devices.Android)
+        {
+            if (string.IsNullOrWhiteSpace(device.Avd))
+            {
+                errors.Add($"Android device '{device.Name}' has empty AVD name");
+            }
+            
+            if (device.Avd.Contains(" "))
+            {
+                errors.Add($"Android AVD name '{device.Avd}' contains spaces which may cause emulator issues");
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Validate selector configurations to ensure they use supported strategies.
+    /// </summary>
+    private Task ValidateSelectorConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    {
+        foreach (var screenshot in config.Screenshots)
+        {
+            foreach (var action in screenshot.Actions)
+            {
+                // Check wait_for actions
+                if (action.WaitFor != null)
+                {
+                    ValidateSelector(action.WaitFor.Selector, $"Screenshot '{screenshot.Name}' wait_for action", errors);
+                }
+                
+                // Check tap actions
+                if (action.Tap != null)
+                {
+                    ValidateSelector(action.Tap, $"Screenshot '{screenshot.Name}' tap action", errors);
+                }
+            }
+            
+            // Check assert selectors
+            if (screenshot.Assert?.Ios != null)
+            {
+                ValidateSelector(screenshot.Assert.Ios, $"Screenshot '{screenshot.Name}' iOS assert", errors);
+            }
+            if (screenshot.Assert?.Android != null)
+            {
+                ValidateSelector(screenshot.Assert.Android, $"Screenshot '{screenshot.Name}' Android assert", errors);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Validate individual selector to ensure it has at least one supported strategy.
+    /// </summary>
+    private static void ValidateSelector(Selector selector, string context, List<string> errors)
+    {
+        var hasValidStrategy = !string.IsNullOrEmpty(selector.AccessibilityId) ||
+                              !string.IsNullOrEmpty(selector.Id) ||
+                              !string.IsNullOrEmpty(selector.IosClassChain) ||
+                              !string.IsNullOrEmpty(selector.AndroidUiautomator) ||
+                              !string.IsNullOrEmpty(selector.Xpath);
+
+        if (!hasValidStrategy)
+        {
+            errors.Add($"{context} has selector with no valid locator strategy (AccessibilityId, Id, IosClassChain, AndroidUiautomator, or Xpath required)");
+        }
+
+        // Warn about XPath usage (discouraged but allowed)
+        if (!string.IsNullOrEmpty(selector.Xpath))
+        {
+            // Simple validation for common XPath patterns
+            if (!selector.Xpath.StartsWith("/") && !selector.Xpath.StartsWith("("))
+            {
+                errors.Add($"{context} has invalid XPath selector '{selector.Xpath}' - should start with '/' or '('");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validate platform version formats.
+    /// </summary>
+    private Task ValidatePlatformVersionsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    {
+        // Validate iOS platform versions (should be like "18.5", "17.0", etc.)
+        foreach (var device in config.Devices.Ios)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(device.PlatformVersion, @"^\d+\.\d+$"))
+            {
+                errors.Add($"iOS device '{device.Name}' has invalid platform version format '{device.PlatformVersion}' - should be like '18.5'");
+            }
+            
+            if (device.PlatformVersion.StartsWith("0"))
+            {
+                errors.Add($"iOS device '{device.Name}' has platform version '{device.PlatformVersion}' starting with 0");
+            }
+        }
+
+        // Validate Android platform versions (should be like "34", "33", etc.)
+        foreach (var device in config.Devices.Android)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(device.PlatformVersion, @"^\d+$"))
+            {
+                errors.Add($"Android device '{device.Name}' has invalid platform version format '{device.PlatformVersion}' - should be a number like '34'");
             }
         }
 

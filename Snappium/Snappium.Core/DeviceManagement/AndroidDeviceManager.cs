@@ -57,11 +57,11 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             "-port", port.ToString(),
             "-no-window",  // Run headless
             "-no-audio",   // Disable audio
-            "-no-snapshot-save",  // Don't save snapshots
-            "-wipe-data"   // Start with clean state
+            "-no-snapshot-save"  // Don't save snapshots
         };
 
-        _logger.LogDebug("Starting emulator with command: emulator {Args}", string.Join(" ", args));
+        var emulatorCmd = GetEmulatorCommand();
+        _logger.LogDebug("Starting emulator with command: {Command} {Args}", emulatorCmd, string.Join(" ", args));
 
         // Start the emulator in the background (don't wait for it to complete)
         var emulatorTask = _commandRunner.RunAsync(
@@ -404,14 +404,21 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
 
     private static string GetEmulatorCommand()
     {
-        // On different platforms, the emulator command might be in different locations
+        // Get Android SDK path from ANDROID_HOME environment variable
+        var androidHome = Environment.GetEnvironmentVariable("ANDROID_HOME");
+        if (string.IsNullOrEmpty(androidHome))
+        {
+            throw new InvalidOperationException("ANDROID_HOME environment variable is not set");
+        }
+
+        // Build full path to emulator executable
         if (Os.IsWindows)
         {
-            return "emulator.exe";
+            return Path.Combine(androidHome, "emulator", "emulator.exe");
         }
         else
         {
-            return "emulator";
+            return Path.Combine(androidHome, "emulator", "emulator");
         }
     }
 

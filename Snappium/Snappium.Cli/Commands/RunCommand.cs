@@ -99,7 +99,10 @@ public class RunCommand : Command
 
         var verboseOption = new Option<bool>(
             name: "--verbose",
-            description: "Enable verbose logging with debug output");
+            description: "Enable verbose logging with debug output")
+        {
+            IsHidden = true // Hidden since verbose is always enabled
+        };
 
         AddOption(configOption);
         AddOption(platformsOption);
@@ -152,14 +155,6 @@ public class RunCommand : Command
         bool verbose,
         CancellationToken cancellationToken)
     {
-        // Create enhanced logger with verbose mode
-        var snappiumLogger = new Snappium.Core.Logging.SnappiumConsoleLogger(_logger, verbose);
-        
-        if (verbose)
-        {
-            snappiumLogger.LogDebug("Verbose mode enabled");
-        }
-        
         try
         {
             // Load configuration

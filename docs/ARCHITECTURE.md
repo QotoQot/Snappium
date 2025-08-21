@@ -205,7 +205,6 @@ snappium run \
   --android-app path/to/app.apk \ # Override: use pre-built Android app
   --output ./Screenshots \        # Override: custom output directory
   --base-port 4724 \             # Override: custom Appium port
-  --verbose                       # Enhanced logging
 ```
 
 ## Configuration & Planning
@@ -536,8 +535,9 @@ The system supports multiple action types for navigation:
 1. **Tap Action**: Touch element
    ```json
    {
-     "tap": {
-       "AccessibilityId": "settings-button"
+     "Tap": {
+       "Ios": {"AccessibilityId": "settings-button"},
+       "Android": {"AccessibilityId": "settings_button"}
      }
    }
    ```
@@ -545,8 +545,8 @@ The system supports multiple action types for navigation:
 2. **Wait Action**: Fixed delay
    ```json
    {
-     "wait": {
-       "seconds": 2.0
+     "Wait": {
+       "Seconds": 2.0
      }
    }
    ```
@@ -554,11 +554,10 @@ The system supports multiple action types for navigation:
 3. **Wait For Action**: Wait for element to appear
    ```json
    {
-     "wait_for": {
-       "timeout": 5000,
-       "selector": {
-         "AccessibilityId": "loading-indicator"
-       }
+     "WaitFor": {
+       "TimeoutMs": 5000,
+       "Ios": {"AccessibilityId": "loading-indicator"},
+       "Android": {"AccessibilityId": "loading_indicator"}
      }
    }
    ```
@@ -566,8 +565,8 @@ The system supports multiple action types for navigation:
 4. **Capture Action**: Take screenshot
    ```json
    {
-     "capture": {
-       "name": "home_screen"
+     "Capture": {
+       "Name": "home_screen"
      }
    }
    ```
@@ -662,11 +661,11 @@ public interface IImageValidator
 1. **Dimension Validation**: Ensures screenshots match expected device dimensions
    ```json
    {
-     "expected_sizes": {
-       "ios": {
+     "ExpectedSizes": {
+       "Ios": {
          "iPhone_15_6.1": {
-           "portrait": [393, 852],
-           "landscape": [852, 393]
+           "Portrait": [393, 852],
+           "Landscape": [852, 393]
          }
        }
      }
@@ -678,9 +677,9 @@ public interface IImageValidator
 3. **Assertion Validation**: Validates that expected elements are present
    ```json
    {
-     "assert": {
-       "ios": {"AccessibilityId": "main-content"},
-       "android": {"AccessibilityId": "main_content"}
+     "Assert": {
+       "Ios": {"AccessibilityId": "main-content"},
+       "Android": {"AccessibilityId": "main_content"}
      }
    }
    ```

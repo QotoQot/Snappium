@@ -391,46 +391,7 @@ public sealed class JobExecutor : IJobExecutor
             {
                 _logger.LogWarning(ex, "Failed to capture failure screenshot");
             }
-
-            // Capture device logs
-            try
-            {
-                var logsPath = Path.Combine(artifactDir, "device_logs.txt");
-                string logs = "";
-
-                if (job.Platform == Platform.iOS && job.IosDevice != null)
-                {
-                    _snappiumLogger?.LogDebug("Capturing iOS device logs...");
-                    logs = await _iosDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
-                }
-                else if (job.Platform == Platform.Android)
-                {
-                    _snappiumLogger?.LogDebug("Capturing Android device logs...");
-                    logs = await _androidDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
-                }
-
-                if (!string.IsNullOrEmpty(logs))
-                {
-                    await File.WriteAllTextAsync(logsPath, logs, cancellationToken);
-                    
-                    failureArtifacts.Add(new FailureArtifact
-                    {
-                        Type = FailureArtifactType.DeviceLogs,
-                        Path = logsPath,
-                        Timestamp = DateTimeOffset.UtcNow
-                    });
-                    
-                    _snappiumLogger?.LogDebug("Successfully captured device logs ({0} characters)", logs.Length);
-                }
-                else
-                {
-                    _snappiumLogger?.LogWarning("No device logs captured");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to capture device logs");
-            }
+            
         }
         catch (Exception ex)
         {
