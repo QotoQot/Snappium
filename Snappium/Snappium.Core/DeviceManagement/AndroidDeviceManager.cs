@@ -299,7 +299,37 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             _logger.LogWarning("Failed to stop emulator gracefully: {Error}", result.StandardError);
         }
 
-        _logger.LogDebug("Emulator stop command completed for {Serial}", deviceSerial);
+        // Wait for the emulator to fully shut down
+        _logger.LogDebug("Waiting for emulator {Serial} to fully shut down", deviceSerial);
+        var shutdownComplete = await DeviceHelpers.PollUntilAsync(
+            async () =>
+            {
+                var devicesResult = await _commandRunner.RunAsync(
+                    "adb",
+                    ["devices"],
+                    timeout: TimeSpan.FromSeconds(5),
+                    cancellationToken: cancellationToken);
+                
+                // Check if device is no longer in the list
+                return !devicesResult.StandardOutput.Contains(deviceSerial);
+            },
+            timeout: TimeSpan.FromSeconds(30),
+            pollingInterval: TimeSpan.FromSeconds(1),
+            logger: _logger,
+            operationName: $"emulator {deviceSerial} shutdown",
+            cancellationToken: cancellationToken);
+
+        if (!shutdownComplete)
+        {
+            _logger.LogWarning("Emulator {Serial} did not fully shut down within timeout", deviceSerial);
+        }
+        else
+        {
+            _logger.LogDebug("Emulator {Serial} has fully shut down", deviceSerial);
+        }
+        
+        // Add a small delay to ensure all resources are released
+        await DeviceHelpers.DelayAsync(TimeSpan.FromSeconds(2), _logger, "post-shutdown cleanup", cancellationToken);
     }
 
     /// <inheritdoc />

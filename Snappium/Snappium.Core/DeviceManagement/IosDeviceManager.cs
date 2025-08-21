@@ -40,6 +40,65 @@ public sealed class IosDeviceManager : IIosDeviceManager
         {
             _logger.LogDebug("Simulator shutdown completed: {Output}", result.StandardOutput);
         }
+        
+        // Wait for the simulator to fully shut down
+        _logger.LogDebug("Waiting for simulator {Device} to fully shut down", udidOrName);
+        var shutdownComplete = await DeviceHelpers.PollUntilAsync(
+            async () =>
+            {
+                var listResult = await _commandRunner.RunAsync(
+                    "xcrun",
+                    ["simctl", "list", "devices", "-j"],
+                    timeout: TimeSpan.FromSeconds(5),
+                    cancellationToken: cancellationToken);
+                
+                if (!listResult.IsSuccess) return false;
+                
+                try
+                {
+                    var json = JsonDocument.Parse(listResult.StandardOutput);
+                    var devices = json.RootElement.GetProperty("devices");
+                    
+                    foreach (var runtimeDevices in devices.EnumerateObject())
+                    {
+                        foreach (var device in runtimeDevices.Value.EnumerateArray())
+                        {
+                            var deviceUdid = device.GetProperty("udid").GetString();
+                            var deviceName = device.GetProperty("name").GetString();
+                            var state = device.GetProperty("state").GetString();
+                            
+                            if ((deviceUdid == udidOrName || deviceName == udidOrName) && state == "Shutdown")
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // If parsing fails, assume not shut down yet
+                    return false;
+                }
+                
+                return false;
+            },
+            timeout: TimeSpan.FromSeconds(30),
+            pollingInterval: TimeSpan.FromSeconds(1),
+            logger: _logger,
+            operationName: $"simulator {udidOrName} shutdown",
+            cancellationToken: cancellationToken);
+
+        if (!shutdownComplete)
+        {
+            _logger.LogWarning("Simulator {Device} did not fully shut down within timeout", udidOrName);
+        }
+        else
+        {
+            _logger.LogDebug("Simulator {Device} has fully shut down", udidOrName);
+        }
+        
+        // Add a small delay to ensure all resources are released
+        await DeviceHelpers.DelayAsync(TimeSpan.FromSeconds(2), _logger, "post-shutdown cleanup", cancellationToken);
     }
 
     /// <inheritdoc />

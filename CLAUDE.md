@@ -217,3 +217,5 @@ When adding new features:
 4. **New Validation**: Extend `IImageValidator` interface
 
 Always ensure changes maintain the existing dependency injection pattern and include comprehensive unit tests with mocking.
+
+- Always run the project build from ./Snappium subdirectory, where the solution is stored. Do not run from the root.

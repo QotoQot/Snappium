@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,60 +51,45 @@ public sealed class Orchestrator : IOrchestrator
 
         try
         {
-            // Execute jobs in parallel with controlled concurrency
-            var concurrentJobResults = new ConcurrentBag<JobResult>();
-            
-            // Determine max concurrency based on job count and available resources
-            var maxConcurrency = Defaults.Concurrency.CalculateOptimalConcurrency(runPlan.Jobs.Count);
-            _logger.LogInformation("Executing {JobCount} jobs with max concurrency of {MaxConcurrency}", 
-                runPlan.Jobs.Count, maxConcurrency);
+            // Execute jobs sequentially - one at a time to avoid device conflicts
+            _logger.LogInformation("Executing {JobCount} jobs sequentially (one at a time)", 
+                runPlan.Jobs.Count);
 
-            await Parallel.ForEachAsync(
-                runPlan.Jobs,
-                new ParallelOptions
+            foreach (var job in runPlan.Jobs)
+            {
+                try
                 {
-                    MaxDegreeOfParallelism = maxConcurrency,
-                    CancellationToken = cancellationToken
-                },
-                async (job, ct) =>
-                {
-                    try
+                    // Create a new JobExecutor instance for this job to ensure complete isolation
+                    using var jobServiceProvider = CreateJobScopedServiceProvider();
+                    var jobExecutor = jobServiceProvider.ServiceProvider.GetRequiredService<IJobExecutor>();
+                    
+                    var jobResult = await jobExecutor.ExecuteAsync(job, config, cliOverrides, cancellationToken);
+                    jobResults.Add(jobResult);
+                    
+                    if (!jobResult.Success)
                     {
-                        // Create a new JobExecutor instance for this job to ensure complete isolation
-                        using var jobServiceProvider = CreateJobScopedServiceProvider();
-                        var jobExecutor = jobServiceProvider.ServiceProvider.GetRequiredService<IJobExecutor>();
-                        
-                        var jobResult = await jobExecutor.ExecuteAsync(job, config, cliOverrides, ct);
-                        concurrentJobResults.Add(jobResult);
-                        
-                        if (!jobResult.Success)
-                        {
-                            overallSuccess = false;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to execute job for {Platform} {Device}", job.Platform, job.DeviceFolder);
-                        
-                        concurrentJobResults.Add(new JobResult
-                        {
-                            Job = job,
-                            Status = JobStatus.Failed,
-                            StartTime = DateTimeOffset.UtcNow,
-                            EndTime = DateTimeOffset.UtcNow,
-                            ErrorMessage = ex.Message,
-                            Exception = ex,
-                            Screenshots = new List<ScreenshotResult>(),
-                            FailureArtifacts = new List<FailureArtifact>()
-                        });
-                        
                         overallSuccess = false;
                     }
-                });
-
-            // Convert concurrent results to ordered list based on original job order
-            jobResults.AddRange(concurrentJobResults.OrderBy(jr => 
-                runPlan.Jobs.FindIndex(j => ReferenceEquals(j, jr.Job))));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to execute job for {Platform} {Device}", job.Platform, job.DeviceFolder);
+                    
+                    jobResults.Add(new JobResult
+                    {
+                        Job = job,
+                        Status = JobStatus.Failed,
+                        StartTime = DateTimeOffset.UtcNow,
+                        EndTime = DateTimeOffset.UtcNow,
+                        ErrorMessage = ex.Message,
+                        Exception = ex,
+                        Screenshots = new List<ScreenshotResult>(),
+                        FailureArtifacts = new List<FailureArtifact>()
+                    });
+                    
+                    overallSuccess = false;
+                }
+            }
         }
         catch (Exception ex)
         {

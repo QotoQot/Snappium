@@ -70,15 +70,27 @@ public sealed class AppiumServerController : IAppiumServerController
             // Check if port is already in use by external process
             if (await IsServerRunningAsync(port, cancellationToken))
             {
-                _logger.LogInformation("Port {Port} is already in use by an existing Appium server, reusing it", port);
+                _logger.LogInformation("Port {Port} is already in use by an existing Appium server, verifying it's ready", port);
                 var externalServerUrl = $"http://localhost:{port}";
                 
-                return new AppiumServerResult
+                // Even for existing servers, wait for them to be fully ready
+                var isReady = await WaitForServerReadyAsync(externalServerUrl, TimeSpan.FromSeconds(30), cancellationToken);
+                
+                if (isReady)
                 {
-                    Success = true,
-                    ServerUrl = externalServerUrl,
-                    ProcessId = null // External process, we don't manage it
-                };
+                    _logger.LogInformation("Existing Appium server on port {Port} is ready", port);
+                    return new AppiumServerResult
+                    {
+                        Success = true,
+                        ServerUrl = externalServerUrl,
+                        ProcessId = null // External process, we don't manage it
+                    };
+                }
+                else
+                {
+                    _logger.LogWarning("Existing Appium server on port {Port} is not responding properly", port);
+                    // Fall through to start a new server
+                }
             }
 
             // Start Appium server
@@ -330,25 +342,53 @@ public sealed class AppiumServerController : IAppiumServerController
     private async Task<bool> WaitForServerReadyAsync(string serverUrl, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var endTime = DateTime.UtcNow.Add(timeout);
+        var attemptCount = 0;
+        
+        _logger.LogDebug("Waiting for Appium server at {ServerUrl} to become ready (timeout: {Timeout})", serverUrl, timeout);
         
         while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
         {
+            attemptCount++;
             try
             {
                 var response = await _httpClient.GetAsync($"{serverUrl}/status", cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
-                    return true;
+                    var content = await response.Content.ReadAsStringAsync(cancellationToken);
+                    var status = JsonSerializer.Deserialize<JsonElement>(content);
+                    
+                    // Check if it's actually an Appium server and it's ready
+                    if (status.TryGetProperty("value", out var value))
+                    {
+                        // Check for ready flag if available
+                        if (value.TryGetProperty("ready", out var ready) && ready.GetBoolean())
+                        {
+                            _logger.LogDebug("Appium server is ready after {Attempts} attempts", attemptCount);
+                            return true;
+                        }
+                        // Fallback: if no ready flag, assume ready if we got a valid response
+                        else if (!value.TryGetProperty("ready", out _))
+                        {
+                            _logger.LogDebug("Appium server responded successfully after {Attempts} attempts (no ready flag)", attemptCount);
+                            return true;
+                        }
+                    }
                 }
             }
-            catch
+            catch (HttpRequestException ex)
             {
-                // Server not ready yet
+                _logger.LogTrace("Server not ready yet (attempt {Attempt}): {Message}", attemptCount, ex.Message);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogTrace("Server not ready yet (attempt {Attempt}): Request timeout", attemptCount);
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
         }
 
+        _logger.LogWarning("Appium server at {ServerUrl} did not become ready within {Timeout} after {Attempts} attempts", 
+            serverUrl, timeout, attemptCount);
         return false;
     }
 

@@ -199,6 +199,12 @@ public sealed class RunPlanBuilder
         var directory = Path.GetDirectoryName(globPattern) ?? ".";
         var pattern = Path.GetFileName(globPattern);
 
+        // Ensure we have an absolute path for the directory
+        if (!Path.IsPathRooted(directory))
+        {
+            directory = Path.GetFullPath(directory);
+        }
+
         if (!Directory.Exists(directory))
         {
             return null;
@@ -214,9 +220,9 @@ public sealed class RunPlanBuilder
             .Where(f => regex.IsMatch(Path.GetFileName(f)))
             .ToArray();
 
-        // Return the most recently modified file
+        // Return the most recently modified file with absolute path
         return files.Length > 0
-            ? files.OrderByDescending(f => new FileInfo(f).LastWriteTime).First()
+            ? Path.GetFullPath(files.OrderByDescending(f => new FileInfo(f).LastWriteTime).First())
             : null;
     }
 
