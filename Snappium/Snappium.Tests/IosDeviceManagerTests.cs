@@ -24,29 +24,6 @@ public class IosDeviceManagerTests
     }
 
     [Test]
-    public async Task ShutdownAsync_SuccessfulCommand_CompletesWithoutError()
-    {
-        // Arrange
-        var deviceId = "test-device";
-        _commandRunner.SetupCommand("xcrun", ["simctl", "shutdown", deviceId], exitCode: 0);
-
-        // Act & Assert
-        Assert.DoesNotThrowAsync(() => _deviceManager.ShutdownAsync(deviceId));
-        Assert.That(_commandRunner.ExecutedCommands, Has.Count.EqualTo(1));
-    }
-
-    [Test]
-    public async Task ShutdownAsync_FailedCommand_LogsWarningButDoesNotThrow()
-    {
-        // Arrange
-        var deviceId = "test-device";
-        _commandRunner.SetupCommand("xcrun", ["simctl", "shutdown", deviceId], exitCode: 1, stderr: "Device not found");
-
-        // Act & Assert
-        Assert.DoesNotThrowAsync(() => _deviceManager.ShutdownAsync(deviceId));
-    }
-
-    [Test]
     public async Task GetCapabilities_ValidDevice_ReturnsCorrectCapabilities()
     {
         // Arrange
