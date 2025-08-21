@@ -30,7 +30,7 @@ Snappium is a cross-platform screenshot automation system that coordinates multi
 - **Action-Based Configuration**: Flexible navigation through configurable actions
 - **Failure-Resilient**: Comprehensive error handling, artifact collection, and process cleanup
 - **Tool Integration**: Seamless coordination of external tools (Xcode, Android SDK, Appium)
-- **Parallel Execution**: Job-level isolation enables safe parallel execution with automatic resource management
+- **Sequential Execution**: Jobs executed one at a time to prevent device conflicts and ensure reliable execution
 
 ## System Architecture
 
@@ -114,7 +114,7 @@ ConfigLoader → RootConfig → RunPlanBuilder → RunPlan → Jobs[]
 - `ConfigLoader`: JSON deserialization with schema validation
 - `RootConfig`: Strongly-typed configuration model
 - `RunPlanBuilder`: Matrix expansion (devices × languages × screenshots)
-- `PortAllocator`: Port management for parallel execution
+- `PortAllocator`: Port management for sequential execution
 - `RunJob`: Individual execution unit (platform + device + language + screenshots)
 - `Defaults`: Centralized constants for ports, timeouts, concurrency, and limits
 
@@ -133,7 +133,7 @@ public async Task<RunResult> ExecuteAsync(
 ```
 
 **Orchestrator Responsibilities**:
-1. **Job Execution**: Processes jobs with parallel execution and job-level isolation
+1. **Job Execution**: Processes jobs sequentially with complete device isolation between jobs
 2. **Device Coordination**: Manages iOS simulators and Android emulators with stateless device managers
 3. **Build Management**: Coordinates app building and installation
 4. **Appium Lifecycle**: Manages server and driver creation with automatic cleanup
@@ -141,35 +141,30 @@ public async Task<RunResult> ExecuteAsync(
 6. **Failure Handling**: Captures comprehensive artifacts including device logs
 7. **Result Aggregation**: Collects and formats execution results with detailed metrics
 
-### Job-Level Isolation & Parallel Execution
+### Sequential Job Execution & Device Isolation
 
-Snappium implements job-level isolation to enable safe parallel execution:
+Snappium executes jobs sequentially to prevent device conflicts and ensure reliable execution:
 
 ```csharp
-// Each job gets its own dependency injection scope
+// Each job gets its own dependency injection scope for complete isolation
 using var jobServiceProvider = CreateJobScopedServiceProvider();
 var jobExecutor = jobServiceProvider.ServiceProvider.GetRequiredService<IJobExecutor>();
 
-// Parallel execution with controlled concurrency
-await Parallel.ForEachAsync(
-    runPlan.Jobs,
-    new ParallelOptions
-    {
-        MaxDegreeOfParallelism = CalculateOptimalConcurrency(runPlan.Jobs.Count),
-        CancellationToken = cancellationToken
-    },
-    async (job, ct) => {
-        var jobResult = await jobExecutor.ExecuteAsync(job, config, cliOverrides, ct);
-        // Each job is completely isolated from others
-    });
+// Sequential execution with proper device cleanup between jobs
+foreach (var job in runPlan.Jobs)
+{
+    var jobResult = await jobExecutor.ExecuteAsync(job, config, cliOverrides, cancellationToken);
+    // Complete device shutdown and cleanup before next job
+}
 ```
 
 **Key Isolation Features:**
+- **Sequential Processing**: Jobs executed one at a time to prevent device conflicts
 - **Separate DI Scopes**: Each job gets its own dependency injection scope
-- **Port Allocation**: Pre-allocated unique ports prevent conflicts
+- **Device Cleanup**: Complete device shutdown and reset between jobs
 - **Process Management**: Automatic cleanup of job-specific processes
-- **Resource Isolation**: No shared state between parallel jobs
-- **Error Isolation**: Job failures don't affect other running jobs
+- **Resource Isolation**: No shared state between sequential jobs
+- **Error Isolation**: Job failures don't affect subsequent jobs
 
 ## Entry Points & CLI
 
@@ -1164,20 +1159,21 @@ public static class Defaults
         public static readonly TimeSpan ElementOperation = TimeSpan.FromSeconds(10);
     }
     
-    public static class Concurrency
+    public static class Execution
     {
-        public static int CalculateOptimalConcurrency(int jobCount) { ... }
+        public const bool SequentialExecution = true;
     }
 }
 ```
 
 ## Summary
 
-The Snappium architecture provides a robust, scalable foundation for cross-platform mobile screenshot automation. Key architectural strengths:
+The Snappium architecture provides a robust, reliable foundation for cross-platform mobile screenshot automation. Key architectural strengths:
 
 - **Separation of Concerns**: Clear boundaries between configuration, orchestration, device management, and execution
 - **Platform Abstraction**: Unified interfaces that hide platform-specific implementation details  
 - **Tool Integration**: Seamless coordination of multiple external tools through command runners
+- **Sequential Reliability**: Jobs executed one at a time to prevent device conflicts and ensure consistent results
 - **Failure Resilience**: Comprehensive error handling and diagnostic artifact collection
 - **Graceful Shutdown**: Proper cleanup of all managed processes on interruption
 - **Centralized Configuration**: Single source of truth for all default values and constants

@@ -9,7 +9,7 @@ Snappium automates the process of taking screenshots across multiple devices, la
 - **Cross-Platform**: Support for both iOS and Android apps
 - **Multi-Language**: Automated language switching and locale configuration
 - **Action-Driven**: Flexible navigation using configurable actions (tap, wait, capture)
-- **Parallel Execution**: Job-level isolation with configurable concurrency and automatic port management
+- **Sequential Execution**: Jobs executed one at a time with proper device isolation and cleanup
 - **Rich Configuration**: JSON-based configuration with schema validation and centralized defaults
 - **Graceful Shutdown**: Proper cleanup of all managed processes on interruption (Ctrl+C)
 - **Failure Handling**: Automatic artifact collection (page source, screenshots, device logs) with process cleanup
@@ -356,7 +356,7 @@ Automatically dismiss common popups:
 
 ### Port Configuration
 
-Configure port ranges for parallel execution and emulator management:
+Configure port ranges for Appium servers and emulator management:
 
 ```json
 {
@@ -371,7 +371,7 @@ Configure port ranges for parallel execution and emulator management:
 
 **Port Settings:**
 - `basePort`: Starting port for Appium servers (default: 4723)
-- `portOffset`: Port spacing between parallel jobs (default: 10)
+- `portOffset`: Port spacing for sequential job execution (default: 10)
 - `emulatorStartPort`: Starting port for Android emulator allocation (default: 5554)
 - `emulatorEndPort`: Ending port for Android emulator allocation (default: 5600)
 
