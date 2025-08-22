@@ -167,6 +167,22 @@ public sealed class IosDeviceManager : IIosDeviceManager
             throw new InvalidOperationException($"Failed to set AppleLocale: {localeResult.StandardError}");
         }
 
+        // Force light mode to ensure consistent appearance
+        var interfaceStyleResult = await _commandRunner.RunAsync(
+            "xcrun",
+            ["simctl", "spawn", deviceIdentifier, "defaults", "write", "-g", "AppleInterfaceStyle", "Light"],
+            timeout: TimeSpan.FromMinutes(1),
+            cancellationToken: cancellationToken);
+
+        if (!interfaceStyleResult.IsSuccess)
+        {
+            _logger.LogWarning("Failed to set light mode (continuing anyway): {Error}", interfaceStyleResult.StandardError);
+        }
+        else
+        {
+            _logger.LogDebug("Light mode enforced for {Device}", deviceIdentifier);
+        }
+
         _logger.LogDebug("Language configuration completed for {Device}", deviceIdentifier);
     }
 
