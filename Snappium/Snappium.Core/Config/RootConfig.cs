@@ -37,6 +37,11 @@ public sealed class RootConfig
     [Required]
     public required Artifacts Artifacts { get; init; }
 
+    /// <summary>
+    /// Output directory for screenshots. Defaults to "Screenshots" if not specified.
+    /// </summary>
+    public string? OutputDirectory { get; init; }
+
 
     /// <summary>
     /// Timeout configuration for various operations.

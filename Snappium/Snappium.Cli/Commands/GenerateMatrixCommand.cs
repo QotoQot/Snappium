@@ -67,7 +67,7 @@ public class GenerateMatrixCommand : Command
             var effectivePortOffset = config.Ports?.PortOffset ?? Defaults.Ports.PortOffset;
             var portAllocator = new PortAllocator(configBasePort, effectivePortOffset);
             
-            var outputRoot = output?.FullName ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");
+            var outputRoot = output?.FullName ?? config.OutputDirectory ?? Path.Combine(Environment.CurrentDirectory, "Screenshots");
             
             var runPlan = await _runPlanBuilder.BuildAsync(
                 config,
