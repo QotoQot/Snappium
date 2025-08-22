@@ -3,172 +3,183 @@
   "title": "Screenshot Automation Configuration",
   "description": "Unified configuration schema for Snappium screenshot automation",
   "type": "object",
-  "required": ["devices", "languages", "locale_mapping", "screenshots"],
+  "required": ["Devices", "Languages", "LocaleMapping", "Screenshots"],
   "properties": {
-    "devices": {
+    "Devices": {
       "type": "object",
-      "required": ["ios", "android"],
+      "required": ["Ios", "Android"],
       "properties": {
-        "ios": {
+        "Ios": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "folder", "platform_version"],
+            "required": ["Name", "Folder", "PlatformVersion"],
             "properties": {
-              "name": {"type": "string", "minLength": 1},
-              "udid": {"type": ["string", "null"]},
-              "folder": {"type": "string", "pattern": "^[a-zA-Z0-9_]+$"},
-              "platform_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"}
+              "Name": {"type": "string", "minLength": 1},
+              "Udid": {"type": ["string", "null"]},
+              "Folder": {"type": "string", "pattern": "^[a-zA-Z0-9_]+$"},
+              "PlatformVersion": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+$"}
             }
           }
         },
-        "android": {
+        "Android": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["name", "avd", "folder", "platform_version"],
+            "required": ["Name", "Avd", "Folder", "PlatformVersion"],
             "properties": {
-              "name": {"type": "string", "minLength": 1},
-              "avd": {"type": "string", "minLength": 1},
-              "folder": {"type": "string", "pattern": "^[a-zA-Z0-9_]+$"},
-              "platform_version": {"type": "string", "pattern": "^[0-9]+$"}
+              "Name": {"type": "string", "minLength": 1},
+              "Avd": {"type": "string", "minLength": 1},
+              "Folder": {"type": "string", "pattern": "^[a-zA-Z0-9_]+$"},
+              "PlatformVersion": {"type": "string", "pattern": "^[0-9]+$"}
             }
           }
         }
       }
     },
-    "languages": {
+    "Languages": {
       "type": "array",
       "items": {"type": "string", "pattern": "^[a-z]{2}-[A-Z]{2}$"},
       "minItems": 1
     },
-    "locale_mapping": {
+    "LocaleMapping": {
       "type": "object",
       "patternProperties": {
         "^[a-z]{2}-[A-Z]{2}$": {
           "type": "object",
-          "required": ["ios", "android"],
+          "required": ["Ios", "Android"],
           "properties": {
-            "ios": {"type": "string", "pattern": "^[a-z]{2}_[A-Z]{2}$"},
-            "android": {"type": "string", "pattern": "^[a-z]{2}_[A-Z]{2}$"}
+            "Ios": {"type": "string", "pattern": "^[a-z]{2}_[A-Z]{2}$"},
+            "Android": {"type": "string", "pattern": "^[a-z]{2}_[A-Z]{2}$"}
           }
         }
       }
     },
-    "build_config": {
+    "Artifacts": {
       "type": "object",
+      "required": ["Ios", "Android"],
       "properties": {
-        "ios": {"$ref": "#/definitions/platform_build_config"},
-        "android": {"$ref": "#/definitions/platform_build_config"}
+        "Ios": {
+          "type": "object",
+          "required": ["ArtifactGlob", "Package"],
+          "properties": {
+            "ArtifactGlob": {"type": "string"},
+            "Package": {"type": "string"}
+          }
+        },
+        "Android": {
+          "type": "object",
+          "required": ["ArtifactGlob", "Package"],
+          "properties": {
+            "ArtifactGlob": {"type": "string"},
+            "Package": {"type": "string"}
+          }
+        }
       }
     },
-    "screenshots": {
+    "OutputDirectory": {
+      "type": "string",
+      "default": "Screenshots"
+    },
+    "Screenshots": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "actions"],
+        "required": ["Name", "Actions"],
         "properties": {
-          "name": {"type": "string", "minLength": 1},
-          "orientation": {"type": "string", "enum": ["portrait", "landscape"]},
-          "actions": {
+          "Name": {"type": "string", "minLength": 1},
+          "Orientation": {"type": "string", "enum": ["portrait", "landscape"]},
+          "Actions": {
             "type": "array",
             "items": {"$ref": "#/definitions/action"}
           },
-          "assert": {
+          "Assert": {
             "type": "object",
             "properties": {
-              "ios": {"$ref": "#/definitions/selector"},
-              "android": {"$ref": "#/definitions/selector"}
+              "Ios": {"$ref": "#/definitions/selector"},
+              "Android": {"$ref": "#/definitions/selector"}
             }
           }
         }
       }
     },
-    "timeouts": {
+    "Timeouts": {
       "type": "object",
       "properties": {
-        "default_wait_ms": {"type": "integer", "minimum": 1000, "maximum": 60000},
-        "implicit_wait_ms": {"type": "integer", "minimum": 0, "maximum": 10000},
-        "page_load_timeout_ms": {"type": "integer", "minimum": 10000, "maximum": 120000}
+        "DefaultWaitMs": {"type": "integer", "minimum": 1000, "maximum": 60000},
+        "ImplicitWaitMs": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "PageLoadTimeoutMs": {"type": "integer", "minimum": 10000, "maximum": 120000}
       }
     },
-    "ports": {
+    "Ports": {
       "type": "object",
       "properties": {
-        "base_port": {"type": "integer", "minimum": 1024, "maximum": 65535},
-        "port_offset": {"type": "integer", "minimum": 1, "maximum": 100}
+        "BasePort": {"type": "integer", "minimum": 1024, "maximum": 65535},
+        "PortOffset": {"type": "integer", "minimum": 1, "maximum": 100}
       }
     },
-    "app_reset": {
+    "FailureArtifacts": {
       "type": "object",
       "properties": {
-        "policy": {"type": "string", "enum": ["never", "on_language_change", "always"]},
-        "clear_data_on_language_change": {"type": "boolean"},
-        "reinstall_vs_relaunch": {"type": "string", "enum": ["reinstall", "relaunch"]}
+        "SavePageSource": {"type": "boolean"},
+        "SaveScreenshot": {"type": "boolean"},
+        "SaveAppiumLogs": {"type": "boolean"},
+        "SaveDeviceLogs": {"type": "boolean"},
+        "ArtifactsDir": {"type": "string"}
       }
     },
-    "failure_artifacts": {
+    "StatusBar": {
       "type": "object",
       "properties": {
-        "save_page_source": {"type": "boolean"},
-        "save_screenshot": {"type": "boolean"},
-        "save_appium_logs": {"type": "boolean"},
-        "save_device_logs": {"type": "boolean"},
-        "artifacts_dir": {"type": "string"}
-      }
-    },
-    "status_bar": {
-      "type": "object",
-      "properties": {
-        "ios": {
+        "Ios": {
           "type": "object",
           "properties": {
-            "time": {"type": "string"},
-            "wifi_bars": {"type": "integer", "minimum": 0, "maximum": 4},
-            "cellular_bars": {"type": "integer", "minimum": 0, "maximum": 4},
-            "battery_state": {"type": "string", "enum": ["charging", "charged", "unplugged"]}
+            "Time": {"type": "string"},
+            "WifiBars": {"type": "integer", "minimum": 0, "maximum": 4},
+            "CellularBars": {"type": "integer", "minimum": 0, "maximum": 4},
+            "BatteryState": {"type": "string", "enum": ["charging", "charged", "unplugged"]}
           }
         },
-        "android": {
+        "Android": {
           "type": "object",
           "properties": {
-            "demo_mode": {"type": "boolean"},
-            "clock": {"type": "string"},
-            "battery": {"type": "integer", "minimum": 0, "maximum": 100},
-            "wifi": {"type": "string"},
-            "notifications": {"type": "string"}
+            "DemoMode": {"type": "boolean"},
+            "Clock": {"type": "string"},
+            "Battery": {"type": "integer", "minimum": 0, "maximum": 100},
+            "Wifi": {"type": "string"},
+            "Notifications": {"type": "string"}
           }
         }
       }
     },
-    "validation": {
+    "Validation": {
       "type": "object",
       "properties": {
-        "enforce_image_size": {"type": "boolean"},
-        "expected_sizes": {
+        "EnforceImageSize": {"type": "boolean"},
+        "ExpectedSizes": {
           "type": "object",
           "properties": {
-            "ios": {"$ref": "#/definitions/device_sizes"},
-            "android": {"$ref": "#/definitions/device_sizes"}
+            "Ios": {"$ref": "#/definitions/device_sizes"},
+            "Android": {"$ref": "#/definitions/device_sizes"}
           }
         }
       }
     },
-    "capabilities": {
+    "Capabilities": {
       "type": "object",
       "properties": {
-        "ios": {"type": "object"},
-        "android": {"type": "object"}
+        "Ios": {"type": "object"},
+        "Android": {"type": "object"}
       }
     },
-    "dismissors": {
+    "Dismissors": {
       "type": "object",
       "properties": {
-        "ios": {
+        "Ios": {
           "type": "array",
           "items": {"$ref": "#/definitions/selector"}
         },
-        "android": {
+        "Android": {
           "type": "array",
           "items": {"$ref": "#/definitions/selector"}
         }
@@ -176,67 +187,51 @@
     }
   },
   "definitions": {
-    "platform_build_config": {
-      "type": "object",
-      "properties": {
-        "csproj": {"type": "string"},
-        "tfm": {"type": "string"},
-        "artifact_glob": {"type": "string"},
-        "package": {"type": "string"}
-      }
-    },
     "action": {
       "type": "object",
       "oneOf": [
         {
           "properties": {
-            "tap": {
-              "type": "object",
-              "properties": {
-                "ios": {"$ref": "#/definitions/selector"},
-                "android": {"$ref": "#/definitions/selector"}
-              }
-            }
+            "Tap": {"$ref": "#/definitions/selector"}
           },
-          "required": ["tap"]
+          "required": ["Tap"]
         },
         {
           "properties": {
-            "wait": {
+            "Wait": {
               "type": "object",
-              "required": ["seconds"],
+              "required": ["Seconds"],
               "properties": {
-                "seconds": {"type": "number", "minimum": 0}
+                "Seconds": {"type": "number", "minimum": 0}
               }
             }
           },
-          "required": ["wait"]
+          "required": ["Wait"]
         },
         {
           "properties": {
-            "wait_for": {
+            "WaitFor": {
               "type": "object",
-              "required": ["timeout_ms"],
+              "required": ["Selector", "TimeoutMs"],
               "properties": {
-                "ios": {"$ref": "#/definitions/selector"},
-                "android": {"$ref": "#/definitions/selector"},
-                "timeout_ms": {"type": "integer", "minimum": 100, "maximum": 30000}
+                "Selector": {"$ref": "#/definitions/selector"},
+                "TimeoutMs": {"type": "integer", "minimum": 100, "maximum": 30000}
               }
             }
           },
-          "required": ["wait_for"]
+          "required": ["WaitFor"]
         },
         {
           "properties": {
-            "capture": {
+            "Capture": {
               "type": "object",
-              "required": ["name"],
+              "required": ["Name"],
               "properties": {
-                "name": {"type": "string", "minLength": 1}
+                "Name": {"type": "string", "minLength": 1}
               }
             }
           },
-          "required": ["capture"]
+          "required": ["Capture"]
         }
       ]
     },
@@ -251,15 +246,15 @@
         },
         {
           "properties": {
-            "class_chain": {"type": "string", "minLength": 1}
+            "ios_class_chain": {"type": "string", "minLength": 1}
           },
-          "required": ["class_chain"]
+          "required": ["ios_class_chain"]
         },
         {
           "properties": {
-            "uiautomator": {"type": "string", "minLength": 1}
+            "android_uiautomator": {"type": "string", "minLength": 1}
           },
-          "required": ["uiautomator"]
+          "required": ["android_uiautomator"]
         },
         {
           "properties": {
@@ -281,13 +276,13 @@
         "^[a-zA-Z0-9_]+$": {
           "type": "object",
           "properties": {
-            "portrait": {
+            "Portrait": {
               "type": "array",
               "items": {"type": "integer", "minimum": 1},
               "minItems": 2,
               "maxItems": 2
             },
-            "landscape": {
+            "Landscape": {
               "type": "array",
               "items": {"type": "integer", "minimum": 1},
               "minItems": 2,

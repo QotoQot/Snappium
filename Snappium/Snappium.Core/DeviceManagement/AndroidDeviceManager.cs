@@ -365,7 +365,6 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             ["automationName"] = "UiAutomator2",
             ["avd"] = device.Avd,
             ["app"] = apkPath,
-            ["language"] = localeMapping.Android,
             ["locale"] = localeMapping.Android,
             ["autoGrantPermissions"] = true,
             ["noReset"] = true,

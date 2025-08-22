@@ -291,7 +291,7 @@ JSON deserialization for type 'IosDeviceDto' was missing required properties inc
      },
      "Languages": ["en-US"],             // Required
      "LocaleMapping": {                  // Required (note: PascalCase)
-       "en-US": {"ios": "en_US", "android": "en_US"}
+       "en-US": {"Ios": "en_US", "Android": "en_US"}
      },
      "Screenshots": [...]                // Required
    }
@@ -497,8 +497,8 @@ Simulator still showing wrong language after setup
    ```json
    {
      "LocaleMapping": {
-       "en-US": {"ios": "en_US", "android": "en_US"},    // iOS uses underscore
-       "es-ES": {"ios": "es_ES", "android": "es_ES"}
+       "en-US": {"Ios": "en_US", "Android": "en_US"},    // iOS uses underscore
+       "es-ES": {"Ios": "es_ES", "Android": "es_ES"}
      }
    }
    ```
@@ -716,15 +716,11 @@ Element not found: AccessibilityId 'settings-button'
        {
          "WaitFor": {
            "TimeoutMs": 10000,
-           "Ios": {"AccessibilityId": "settings-button"},
-           "Android": {"AccessibilityId": "settings_button"}
+           "Selector": {"accessibility_id": "settings-button"}
          }
        },
        {
-         "Tap": {
-           "Ios": {"AccessibilityId": "settings-button"},
-           "Android": {"AccessibilityId": "settings_button"}
-         }
+         "Tap": {"accessibility_id": "settings-button"}
        }
      ]
    }
@@ -749,19 +745,13 @@ Element 'login-button' worked yesterday but not today
    {
      "name": "login_v1",
      "Actions": [
-       {"Tap": {
-         "Ios": {"AccessibilityId": "login-button"},
-         "Android": {"AccessibilityId": "login_button"}
-       }}
+       {"Tap": {"accessibility_id": "login-button"}}
      ]
    },
    {
      "name": "login_v2", 
      "Actions": [
-       {"Tap": {
-         "Ios": {"AccessibilityId": "loginButton"},
-         "Android": {"AccessibilityId": "loginButton"}
-       }}
+       {"Tap": {"accessibility_id": "loginButton"}}
      ]
    }
    ```
@@ -812,12 +802,12 @@ Could not navigate to settings screen - app crashed
    ```json
    {
      "Dismissors": {
-       "ios": [
+       "Ios": [
          {"AccessibilityId": "Allow"},
          {"AccessibilityId": "OK"},
          {"AccessibilityId": "Continue"}
        ],
-       "android": [
+       "Android": [
          {"Id": "android:id/button1"},
          {"Id": "com.android.permissioncontroller:id/permission_allow_button"}
        ]
@@ -1237,7 +1227,7 @@ Permission dialog appears during screenshot capture
    ```json
    {
      "Dismissors": {
-       "android": [
+       "Android": [
          {"Id": "com.android.permissioncontroller:id/permission_allow_button"},
          {"Id": "android:id/button1"}
        ]

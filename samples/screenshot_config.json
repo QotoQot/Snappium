@@ -18,9 +18,10 @@
     ]
   },
   "Languages": ["en-US", "es-ES"],
+  "OutputDirectory": "Screenshots",
   "LocaleMapping": {
-    "en-US": {"ios": "en_US", "android": "en_US"},
-    "es-ES": {"ios": "es_ES", "android": "es_ES"}
+    "en-US": {"Ios": "en_US", "Android": "en_US"},
+    "es-ES": {"Ios": "es_ES", "Android": "es_ES"}
   },
   "Artifacts": {
     "Ios": {
@@ -39,8 +40,7 @@
       "Actions": [
         {
           "WaitFor": {
-            "Ios": {"AccessibilityId": "main-view"},
-            "Android": {"AccessibilityId": "main_view"},
+            "Selector": {"accessibility_id": "main-view"},
             "TimeoutMs": 5000
           }
         },
@@ -52,15 +52,11 @@
       "Orientation": "portrait",
       "Actions": [
         {
-          "Tap": {
-            "Ios": {"AccessibilityId": "settings-button"},
-            "Android": {"AccessibilityId": "settings_button"}
-          }
+          "Tap": {"accessibility_id": "settings-button"}
         },
         {
           "WaitFor": {
-            "Ios": {"AccessibilityId": "settings-view"},
-            "Android": {"AccessibilityId": "settings_view"},
+            "Selector": {"accessibility_id": "settings-view"},
             "TimeoutMs": 5000
           }
         },
@@ -76,11 +72,6 @@
   "Ports": {
     "BasePort": 4723,
     "PortOffset": 10
-  },
-  "AppReset": {
-    "Policy": "on_language_change",
-    "ClearDataOnLanguageChange": true,
-    "ReinstallVsRelaunch": "relaunch"
   },
   "FailureArtifacts": {
     "SavePageSource": true,

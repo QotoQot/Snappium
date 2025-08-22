@@ -14,7 +14,7 @@ Snappium automates the process of taking screenshots across multiple devices, la
 - **Graceful Shutdown**: Proper cleanup of all managed processes on interruption (Ctrl+C)
 - **Failure Handling**: Automatic artifact collection (page source, screenshots, device logs) with process cleanup
 - **Status Bar Control**: Demo mode and status bar customization
-- **Build Integration**: Automatic app building and artifact discovery
+- **Artifact-Based**: Uses pre-built app artifacts (no build integration)
 - **Comprehensive Logging**: Colored console output with verbose mode
 
 ## Installation
@@ -130,8 +130,18 @@ Snappium uses a JSON configuration file that defines devices, languages, screens
   },
   "Languages": ["en-US", "es-ES"],
   "LocaleMapping": {
-    "en-US": {"ios": "en_US", "android": "en_US"},
-    "es-ES": {"ios": "es_ES", "android": "es_ES"}
+    "en-US": {"Ios": "en_US", "Android": "en_US"},
+    "es-ES": {"Ios": "es_ES", "Android": "es_ES"}
+  },
+  "Artifacts": {
+    "Ios": {
+      "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+      "Package": "com.example.ios.app"
+    },
+    "Android": {
+      "ArtifactGlob": "Droid/bin/Release/net9.0-android/**/*.apk",
+      "Package": "com.example.app"
+    }
   },
   "Screenshots": [
     {
@@ -140,8 +150,7 @@ Snappium uses a JSON configuration file that defines devices, languages, screens
       "Actions": [
         {
           "WaitFor": {
-            "Ios": {"AccessibilityId": "main-view"},
-            "Android": {"AccessibilityId": "main_view"},
+            "Selector": {"accessibility_id": "main-view"},
             "TimeoutMs": 5000
           }
         },
@@ -159,17 +168,14 @@ Snappium supports various actions for navigation:
 #### Tap Action
 ```json
 {
-  "Tap": {
-    "Ios": {"AccessibilityId": "button-id"},
-    "Android": {"AccessibilityId": "button_id"}
-  }
+  "Tap": {"accessibility_id": "button-id"}
 }
 ```
 
 #### Wait Action
 ```json
 {
-  "wait": {"seconds": 2.5}
+  "Wait": {"Seconds": 2.5}
 }
 ```
 
@@ -177,8 +183,7 @@ Snappium supports various actions for navigation:
 ```json
 {
   "WaitFor": {
-    "Ios": {"Xpath": "//XCUIElementTypeButton[@name='Continue']"},
-    "Android": {"Id": "com.example:id/continue_button"},
+    "Selector": {"accessibility_id": "continue-button"},
     "TimeoutMs": 5000
   }
 }
@@ -217,7 +222,6 @@ snappium run --config screenshot_config.json [options]
 - `--langs en-US,es-ES`: Filter languages
 - `--screens home,settings`: Filter screenshots
 - `--output ./Screenshots`: Output directory
-- `--build auto|always|never`: Build mode
 - `--ios-app path/to/app.app`: iOS app path override
 - `--android-app path/to/app.apk`: Android app path override
 - `--base-port 4723`: Appium base port
@@ -240,27 +244,26 @@ Display test matrix:
 snappium generate-matrix --config screenshot_config.json [filters]
 ```
 
-## Build Integration
+## Artifacts Configuration
 
-Snappium can automatically build your apps before taking screenshots:
+Snappium requires pre-built app artifacts. Configure paths to your built apps:
 
 ```json
 {
-  "BuildConfig": {
+  "Artifacts": {
     "Ios": {
-      "Csproj": "iOS/iOS.csproj",
-      "Tfm": "net9.0-ios",
-      "ArtifactGlob": "iOS/bin/Release/**/iOS.app"
+      "ArtifactGlob": "iOS/bin/Release/net9.0-ios/**/*.app",
+      "Package": "com.example.ios.app"
     },
     "Android": {
-      "Csproj": "Droid/Droid.csproj", 
-      "Tfm": "net9.0-android",
-      "ArtifactGlob": "Droid/bin/Release/**/*.apk",
+      "ArtifactGlob": "Droid/bin/Release/net9.0-android/**/*.apk",
       "Package": "com.example.app"
     }
   }
 }
 ```
+
+**Important**: Build your apps before running Snappium. The tool will locate artifacts using the glob patterns and install them on devices using the specified package identifiers.
 
 ## Advanced Features
 
@@ -287,19 +290,9 @@ Configure demo status bars:
 }
 ```
 
-### App Reset Policies
+### Fresh App Installation
 
-Control app data between runs:
-
-```json
-{
-  "AppReset": {
-    "Policy": "on_language_change",
-    "ClearDataOnLanguageChange": true,
-    "ReinstallVsRelaunch": "relaunch"
-  }
-}
-```
+Snappium always performs fresh app installations between runs to ensure clean state. Apps are uninstalled and reinstalled for each language/device combination, eliminating configuration complexity and ensuring consistent results.
 
 ### Screenshot Validation
 
@@ -426,18 +419,18 @@ snappium run --config config.json --platforms android --langs en-US,es-ES,de-DE
 snappium run --config config.json --screens home,settings,profile
 ```
 
-### Build and Test
+### Verbose Output
 
 ```bash
-# Build apps and run screenshots
-snappium run --config config.json --build always --verbose
+# Run with detailed logging
+snappium run --config config.json --verbose
 ```
 
-### Use Pre-Built Apps
+### Override App Paths
 
 ```bash
-# Use existing app builds
-snappium run --config config.json --build never \
+# Override artifact paths
+snappium run --config config.json \
   --ios-app ./iOS.app \
   --android-app ./app-release.apk
 ```
@@ -479,12 +472,12 @@ snappium run --config config.json --build never \
    emulator @Pixel_7_API_34
    ```
 
-5. **Build Failures**
+5. **Missing Artifacts**
    ```bash
-   # Clean and rebuild
-   dotnet clean && dotnet build
-   # Run with verbose build output
-   snappium run --config config.json --verbose
+   # Build your apps first
+   dotnet build -c Release
+   # Check artifact paths match your configuration
+   snappium validate-config --config config.json
    ```
 
 ### Debug Mode

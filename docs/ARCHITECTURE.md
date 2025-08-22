@@ -569,10 +569,7 @@ The system supports multiple action types for navigation:
 1. **Tap Action**: Touch element
    ```json
    {
-     "Tap": {
-       "Ios": {"AccessibilityId": "settings-button"},
-       "Android": {"AccessibilityId": "settings_button"}
-     }
+     "Tap": {"accessibility_id": "settings-button"}
    }
    ```
 
@@ -590,8 +587,7 @@ The system supports multiple action types for navigation:
    {
      "WaitFor": {
        "TimeoutMs": 5000,
-       "Ios": {"AccessibilityId": "loading-indicator"},
-       "Android": {"AccessibilityId": "loading_indicator"}
+       "Selector": {"accessibility_id": "loading-indicator"}
      }
    }
    ```
@@ -712,8 +708,8 @@ public interface IImageValidator
    ```json
    {
      "Assert": {
-       "Ios": {"AccessibilityId": "main-content"},
-       "Android": {"AccessibilityId": "main_content"}
+       "Ios": {"accessibility_id": "main-content"},
+       "Android": {"accessibility_id": "main_content"}
      }
    }
    ```
