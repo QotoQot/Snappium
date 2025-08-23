@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Snappium.Core.Abstractions;
 using Snappium.Core.DeviceManagement;
 
 namespace Snappium.Core.Infrastructure;
@@ -9,9 +8,9 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class ManagedIosSimulator : IManagedProcess
 {
-    private readonly IIosDeviceManager _iosDeviceManager;
-    private readonly string _udid;
-    private readonly ILogger<ManagedIosSimulator> _logger;
+    readonly IIosDeviceManager _iosDeviceManager;
+    readonly string _udid;
+    readonly ILogger<ManagedIosSimulator> _logger;
 
     public ManagedIosSimulator(
         IIosDeviceManager iosDeviceManager,
@@ -43,9 +42,9 @@ public sealed class ManagedIosSimulator : IManagedProcess
 /// </summary>
 public sealed class ManagedAndroidEmulator : IManagedProcess
 {
-    private readonly IAndroidDeviceManager _androidDeviceManager;
-    private readonly string _deviceSerial;
-    private readonly ILogger<ManagedAndroidEmulator> _logger;
+    readonly IAndroidDeviceManager _androidDeviceManager;
+    readonly string _deviceSerial;
+    readonly ILogger<ManagedAndroidEmulator> _logger;
 
     public ManagedAndroidEmulator(
         IAndroidDeviceManager androidDeviceManager,

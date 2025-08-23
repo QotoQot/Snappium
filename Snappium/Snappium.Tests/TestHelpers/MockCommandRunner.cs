@@ -8,9 +8,9 @@ namespace Snappium.Tests.TestHelpers;
 /// </summary>
 public class MockCommandRunner : ICommandRunner
 {
-    private readonly List<ExecutedCommand> _executedCommands = new();
-    private readonly Dictionary<string, CommandSetup> _commandSetups = new();
-    private readonly List<CommandMatcher> _matcherSetups = new();
+    readonly List<ExecutedCommand> _executedCommands = new();
+    readonly Dictionary<string, CommandSetup> _commandSetups = new();
+    readonly List<CommandMatcher> _matcherSetups = new();
 
     /// <summary>
     /// List of all commands that have been executed.
@@ -226,12 +226,12 @@ public class MockCommandRunner : ICommandRunner
             ec.Command == command && ec.Arguments.SequenceEqual(arguments));
     }
 
-    private static string CreateCommandKey(string command, string[] arguments)
+    static string CreateCommandKey(string command, string[] arguments)
     {
         return $"{command}|{string.Join("|", arguments)}";
     }
 
-    private static CommandResult CreateResult(CommandSetup setup)
+    static CommandResult CreateResult(CommandSetup setup)
     {
         return new CommandResult
         {
@@ -242,7 +242,7 @@ public class MockCommandRunner : ICommandRunner
         };
     }
 
-    private class CommandSetup
+    class CommandSetup
     {
         public int ExitCode { get; init; }
         public string StandardOutput { get; init; } = "";
@@ -250,7 +250,7 @@ public class MockCommandRunner : ICommandRunner
         public TimeSpan ExecutionTime { get; init; }
     }
 
-    private class CommandMatcher
+    class CommandMatcher
     {
         public string Command { get; init; } = "";
         public Func<string[], bool> ArgumentMatcher { get; init; } = _ => false;

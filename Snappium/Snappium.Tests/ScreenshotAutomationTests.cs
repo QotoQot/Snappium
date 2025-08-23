@@ -9,7 +9,6 @@ using Snappium.Core.Infrastructure;
 using Snappium.Core.Orchestration;
 using Snappium.Core.Planning;
 using System.Collections;
-using System.Text.Json;
 using EnvironmentInfo = Snappium.Core.Orchestration.EnvironmentInfo;
 
 namespace Snappium.Tests;
@@ -22,8 +21,8 @@ namespace Snappium.Tests;
 [Parallelizable(ParallelScope.All)]
 public class ScreenshotAutomationTests
 {
-    private IServiceProvider _serviceProvider = null!;
-    private string _tempDirectory = null!;
+    IServiceProvider _serviceProvider = null!;
+    string _tempDirectory = null!;
 
     [OneTimeSetUp]
     public void OneTimeSetUp()
@@ -54,7 +53,7 @@ public class ScreenshotAutomationTests
         }
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    static void ConfigureServices(IServiceCollection services)
     {
         // Logging with reduced verbosity for tests
         services.AddLogging(builder =>
@@ -320,7 +319,7 @@ public class ScreenshotAutomationTests
         TestContext.WriteLine("Test completed successfully - plan creation and manifest writing validated");
     }
 
-    private static RootConfig CreateTestConfig()
+    static RootConfig CreateTestConfig()
     {
         return new RootConfig
         {
@@ -387,7 +386,7 @@ public class ScreenshotAutomationTests
         };
     }
 
-    private async Task<RunPlan> CreateSingleJobPlan(RootConfig config, Platform platform, object device, string language, string outputDirectory)
+    async Task<RunPlan> CreateSingleJobPlan(RootConfig config, Platform platform, object device, string language, string outputDirectory)
     {
         var portAllocator = _serviceProvider.GetRequiredService<PortAllocator>();
         
@@ -424,7 +423,7 @@ public class ScreenshotAutomationTests
         };
     }
 
-    private static string GetDeviceName(object device)
+    static string GetDeviceName(object device)
     {
         return device switch
         {
@@ -434,7 +433,7 @@ public class ScreenshotAutomationTests
         };
     }
 
-    private static string GetDeviceFolder(object device)
+    static string GetDeviceFolder(object device)
     {
         return device switch
         {

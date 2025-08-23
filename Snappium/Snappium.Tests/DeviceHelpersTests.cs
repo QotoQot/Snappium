@@ -6,7 +6,7 @@ namespace Snappium.Tests;
 [TestFixture]
 public class DeviceHelpersTests
 {
-    private ILogger _logger = null!;
+    ILogger _logger = null!;
 
     [SetUp]
     public void SetUp()

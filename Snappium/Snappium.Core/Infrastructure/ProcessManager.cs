@@ -9,9 +9,9 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class ProcessManager : IDisposable
 {
-    private readonly ILogger<ProcessManager> _logger;
-    private readonly ConcurrentDictionary<string, IManagedProcess> _managedProcesses;
-    private bool _disposed;
+    readonly ILogger<ProcessManager> _logger;
+    readonly ConcurrentDictionary<string, IManagedProcess> _managedProcesses;
+    bool _disposed;
 
     public ProcessManager(ILogger<ProcessManager> logger)
     {
@@ -100,7 +100,7 @@ public sealed class ProcessManager : IDisposable
         }
     }
 
-    private async Task CleanupProcessAsync(string processId, IManagedProcess managedProcess, CancellationToken cancellationToken)
+    async Task CleanupProcessAsync(string processId, IManagedProcess managedProcess, CancellationToken cancellationToken)
     {
         try
         {
@@ -118,13 +118,13 @@ public sealed class ProcessManager : IDisposable
         }
     }
 
-    private void OnProcessExit(object? sender, EventArgs e)
+    void OnProcessExit(object? sender, EventArgs e)
     {
         _logger.LogInformation("Application process exit detected - cleaning up managed processes");
         CleanupAllProcessesAsync(CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    private void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
+    void OnCancelKeyPress(object? sender, ConsoleCancelEventArgs e)
     {
         _logger.LogInformation("Ctrl+C detected - cleaning up managed processes");
         e.Cancel = true; // Prevent immediate termination
@@ -136,7 +136,7 @@ public sealed class ProcessManager : IDisposable
         Environment.Exit(0);
     }
 
-    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+    void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
         _logger.LogCritical("Unhandled exception detected - cleaning up managed processes before termination");
         try

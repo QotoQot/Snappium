@@ -1,6 +1,4 @@
 using Microsoft.Extensions.Logging;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Appium;
 using Snappium.Core.Appium;
 using Snappium.Core.Config;
 
@@ -9,8 +7,8 @@ namespace Snappium.Tests;
 [TestFixture]
 public class ElementFinderTests
 {
-    private ElementFinder _elementFinder = null!;
-    private ILogger<ElementFinder> _logger = null!;
+    ElementFinder _elementFinder = null!;
+    ILogger<ElementFinder> _logger = null!;
 
     [SetUp]
     public void SetUp()

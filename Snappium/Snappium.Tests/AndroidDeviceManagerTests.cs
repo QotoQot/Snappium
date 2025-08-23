@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
-using Snappium.Core.Infrastructure;
 using Snappium.Tests.TestHelpers;
 
 namespace Snappium.Tests;
@@ -9,9 +8,9 @@ namespace Snappium.Tests;
 [TestFixture]
 public class AndroidDeviceManagerTests
 {
-    private AndroidDeviceManager _deviceManager = null!;
-    private MockCommandRunner _commandRunner = null!;
-    private ILogger<AndroidDeviceManager> _logger = null!;
+    AndroidDeviceManager _deviceManager = null!;
+    MockCommandRunner _commandRunner = null!;
+    ILogger<AndroidDeviceManager> _logger = null!;
 
     [SetUp]
     public void SetUp()

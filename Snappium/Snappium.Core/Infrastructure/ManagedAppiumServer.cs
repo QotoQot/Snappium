@@ -7,9 +7,9 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class ManagedAppiumServer : IManagedProcess
 {
-    private readonly IAppiumServerController _appiumServerController;
-    private readonly int _port;
-    private readonly ILogger<ManagedAppiumServer> _logger;
+    readonly IAppiumServerController _appiumServerController;
+    readonly int _port;
+    readonly ILogger<ManagedAppiumServer> _logger;
 
     public ManagedAppiumServer(
         IAppiumServerController appiumServerController,

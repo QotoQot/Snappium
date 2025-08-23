@@ -10,8 +10,8 @@ namespace Snappium.Core.DeviceManagement;
 /// </summary>
 public sealed class IosDeviceManager : IIosDeviceManager
 {
-    private readonly ICommandRunner _commandRunner;
-    private readonly ILogger<IosDeviceManager> _logger;
+    readonly ICommandRunner _commandRunner;
+    readonly ILogger<IosDeviceManager> _logger;
 
     public IosDeviceManager(ICommandRunner commandRunner, ILogger<IosDeviceManager> logger)
     {
@@ -359,7 +359,7 @@ public sealed class IosDeviceManager : IIosDeviceManager
         };
     }
 
-    private async Task<bool> IsSimulatorBootedAsync(string udidOrName, CancellationToken cancellationToken)
+    async Task<bool> IsSimulatorBootedAsync(string udidOrName, CancellationToken cancellationToken)
     {
         try
         {
@@ -429,12 +429,10 @@ public sealed class IosDeviceManager : IIosDeviceManager
                 
                 return logs;
             }
-            else
-            {
-                _logger.LogWarning("Failed to capture iOS logs (exit code {ExitCode}): {Error}", 
-                    result.ExitCode, result.StandardError);
-                return $"Failed to capture iOS logs: {result.StandardError}";
-            }
+
+            _logger.LogWarning("Failed to capture iOS logs (exit code {ExitCode}): {Error}", 
+                result.ExitCode, result.StandardError);
+            return $"Failed to capture iOS logs: {result.StandardError}";
         }
         catch (Exception ex)
         {

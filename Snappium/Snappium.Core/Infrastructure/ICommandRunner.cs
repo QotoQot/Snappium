@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Snappium.Core.Infrastructure;
 
 /// <summary>

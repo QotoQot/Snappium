@@ -7,9 +7,9 @@ namespace Snappium.Tests;
 [TestFixture]
 public class ConfigLoaderTests
 {
-    private ConfigLoader _configLoader = null!;
-    private ILogger<ConfigLoader> _logger = null!;
-    private string _tempDir = null!;
+  ConfigLoader _configLoader = null!;
+  ILogger<ConfigLoader> _logger = null!;
+  string _tempDir = null!;
 
     [SetUp]
     public void SetUp()
@@ -105,7 +105,7 @@ public class ConfigLoaderTests
         Assert.ThrowsAsync<JsonException>(() => _configLoader.LoadAsync(configPath));
     }
 
-    private static string CreateValidConfigJson()
+    static string CreateValidConfigJson()
     {
         return """
         {
@@ -160,7 +160,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithMissingLocaleMapping()
+    static string CreateConfigWithMissingLocaleMapping()
     {
         return """
         {
@@ -208,7 +208,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithDuplicateFolders()
+    static string CreateConfigWithDuplicateFolders()
     {
         return """
         {
@@ -358,7 +358,7 @@ public class ConfigLoaderTests
         Assert.That(ex.Message, Does.Contain("has empty AVD name"));
     }
 
-    private static string CreateConfigWithDeviceNameQuotes()
+    static string CreateConfigWithDeviceNameQuotes()
     {
         return """
         {
@@ -398,7 +398,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithAndroidAvdSpaces()
+    static string CreateConfigWithAndroidAvdSpaces()
     {
         return """
         {
@@ -439,7 +439,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithInvalidIosPlatformVersion()
+    static string CreateConfigWithInvalidIosPlatformVersion()
     {
         return """
         {
@@ -479,7 +479,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithInvalidAndroidPlatformVersion()
+    static string CreateConfigWithInvalidAndroidPlatformVersion()
     {
         return """
         {
@@ -520,7 +520,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithEmptySelectors()
+    static string CreateConfigWithEmptySelectors()
     {
         return """
         {
@@ -566,7 +566,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithInvalidXPath()
+    static string CreateConfigWithInvalidXPath()
     {
         return """
         {
@@ -611,7 +611,7 @@ public class ConfigLoaderTests
         """;
     }
 
-    private static string CreateConfigWithEmptyAndroidAvd()
+    static string CreateConfigWithEmptyAndroidAvd()
     {
         return """
         {

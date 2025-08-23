@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 using Snappium.Core.Infrastructure;
-using System.Text.RegularExpressions;
 
 namespace Snappium.Core.DeviceManagement;
 
@@ -10,9 +9,9 @@ namespace Snappium.Core.DeviceManagement;
 /// </summary>
 public sealed class AndroidDeviceManager : IAndroidDeviceManager
 {
-    private readonly ICommandRunner _commandRunner;
-    private readonly ILogger<AndroidDeviceManager> _logger;
-    private readonly AppiumSettingsHelper _appiumSettingsHelper;
+    readonly ICommandRunner _commandRunner;
+    readonly ILogger<AndroidDeviceManager> _logger;
+    readonly AppiumSettingsHelper _appiumSettingsHelper;
 
     public AndroidDeviceManager(ICommandRunner commandRunner, ILogger<AndroidDeviceManager> logger)
     {
@@ -374,7 +373,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         };
     }
 
-    private async Task<Infrastructure.CommandResult> RunAdbCommandAsync(
+    async Task<Infrastructure.CommandResult> RunAdbCommandAsync(
         string deviceSerial,
         string[] args,
         TimeSpan? timeout = null,
@@ -390,7 +389,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
             cancellationToken: cancellationToken);
     }
 
-    private async Task<int> FindAvailableEmulatorPortAsync(int portRangeStart, int portRangeEnd, CancellationToken cancellationToken)
+    async Task<int> FindAvailableEmulatorPortAsync(int portRangeStart, int portRangeEnd, CancellationToken cancellationToken)
     {
         // Find an available port for the emulator within the specified range
         // Emulator uses even ports, so start from the first even port in range
@@ -414,7 +413,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         throw new InvalidOperationException($"No available emulator ports found in range {portRangeStart}-{portRangeEnd}");
     }
 
-    private async Task<bool> IsEmulatorStartingAsync(string emulatorSerial, CancellationToken cancellationToken)
+    async Task<bool> IsEmulatorStartingAsync(string emulatorSerial, CancellationToken cancellationToken)
     {
         try
         {
@@ -433,7 +432,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         }
     }
 
-    private async Task<bool> IsEmulatorBootedAsync(string deviceSerial, CancellationToken cancellationToken)
+    async Task<bool> IsEmulatorBootedAsync(string deviceSerial, CancellationToken cancellationToken)
     {
         try
         {
@@ -452,7 +451,7 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         }
     }
 
-    private static string GetEmulatorCommand()
+    static string GetEmulatorCommand()
     {
         // Get Android SDK path from ANDROID_HOME environment variable
         var androidHome = Environment.GetEnvironmentVariable("ANDROID_HOME");
@@ -466,10 +465,8 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
         {
             return Path.Combine(androidHome, "emulator", "emulator.exe");
         }
-        else
-        {
-            return Path.Combine(androidHome, "emulator", "emulator");
-        }
+
+        return Path.Combine(androidHome, "emulator", "emulator");
     }
 
     /// <inheritdoc />
@@ -499,12 +496,10 @@ public sealed class AndroidDeviceManager : IAndroidDeviceManager
                 
                 return logs;
             }
-            else
-            {
-                _logger.LogWarning("Failed to capture Android logs (exit code {ExitCode}): {Error}", 
-                    result.ExitCode, result.StandardError);
-                return $"Failed to capture Android logs: {result.StandardError}";
-            }
+
+            _logger.LogWarning("Failed to capture Android logs (exit code {ExitCode}): {Error}", 
+                result.ExitCode, result.StandardError);
+            return $"Failed to capture Android logs: {result.StandardError}";
         }
         catch (Exception ex)
         {

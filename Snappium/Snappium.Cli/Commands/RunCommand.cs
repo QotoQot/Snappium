@@ -1,6 +1,5 @@
 using System.CommandLine;
 using Microsoft.Extensions.Logging;
-using Snappium.Core.Abstractions;
 using Snappium.Core.Config;
 using Snappium.Core.Orchestration;
 using Snappium.Core.Planning;
@@ -9,12 +8,12 @@ namespace Snappium.Cli.Commands;
 
 public class RunCommand : Command
 {
-    private readonly IOrchestrator _orchestrator;
-    private readonly ConfigLoader _configLoader;
-    private readonly RunPlanBuilder _runPlanBuilder;
-    private readonly IManifestWriter _manifestWriter;
-    private readonly ILogger<RunCommand> _logger;
-    private readonly FilteringOptions _filteringOptions;
+    readonly IOrchestrator _orchestrator;
+    readonly ConfigLoader _configLoader;
+    readonly RunPlanBuilder _runPlanBuilder;
+    readonly IManifestWriter _manifestWriter;
+    readonly ILogger<RunCommand> _logger;
+    readonly FilteringOptions _filteringOptions;
 
     public RunCommand(
         IOrchestrator orchestrator,
@@ -91,7 +90,7 @@ public class RunCommand : Command
         });
     }
 
-    private async Task<int> ExecuteAsync(
+    async Task<int> ExecuteAsync(
         FileInfo configFile,
         string[]? platforms,
         string[]? devices,
@@ -165,7 +164,7 @@ public class RunCommand : Command
         }
     }
 
-    private static void PrintDryRunPlan(RunPlan runPlan, ILogger logger)
+    static void PrintDryRunPlan(RunPlan runPlan, ILogger logger)
     {
         logger.LogInformation("=== DRY RUN - Resolved Plan ===");
         logger.LogInformation("Total jobs: {JobCount}", runPlan.Jobs.Count);

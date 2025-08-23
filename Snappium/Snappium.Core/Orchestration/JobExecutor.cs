@@ -15,16 +15,16 @@ namespace Snappium.Core.Orchestration;
 /// </summary>
 public sealed class JobExecutor : IJobExecutor
 {
-    private readonly IDriverFactory _driverFactory;
-    private readonly IActionExecutor _actionExecutor;
-    private readonly IImageValidator _imageValidator;
-    private readonly IIosDeviceManager _iosDeviceManager;
-    private readonly IAndroidDeviceManager _androidDeviceManager;
-    private readonly IAppiumServerController _appiumServerController;
-    private readonly ProcessManager _processManager;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<JobExecutor> _logger;
-    private readonly ISnappiumLogger? _snappiumLogger;
+    readonly IDriverFactory _driverFactory;
+    readonly IActionExecutor _actionExecutor;
+    readonly IImageValidator _imageValidator;
+    readonly IIosDeviceManager _iosDeviceManager;
+    readonly IAndroidDeviceManager _androidDeviceManager;
+    readonly IAppiumServerController _appiumServerController;
+    readonly ProcessManager _processManager;
+    readonly IServiceProvider _serviceProvider;
+    readonly ILogger<JobExecutor> _logger;
+    readonly ISnappiumLogger? _snappiumLogger;
 
     public JobExecutor(
         IDriverFactory driverFactory,
@@ -72,7 +72,6 @@ public sealed class JobExecutor : IJobExecutor
         var success = true;
         string? errorMessage = null;
         string? deviceIdentifier = null;
-        string? appiumProcessId = null;
         AppiumDriver? driver = null; // Driver is now nullable for artifact capture
 
         try
@@ -90,7 +89,7 @@ public sealed class JobExecutor : IJobExecutor
                 throw new InvalidOperationException($"Failed to start Appium server on port {ports.AppiumPort}: {serverResult.ErrorMessage}");
             }
 
-            appiumProcessId = $"appium-{ports.AppiumPort}";
+            var appiumProcessId = $"appium-{ports.AppiumPort}";
             var appiumLogger = _serviceProvider.GetRequiredService<ILogger<ManagedAppiumServer>>();
             var managedAppiumServer = new ManagedAppiumServer(_appiumServerController, ports.AppiumPort, appiumLogger);
             _processManager.RegisterProcess(appiumProcessId, managedAppiumServer);
@@ -164,7 +163,7 @@ public sealed class JobExecutor : IJobExecutor
                 
                 // Unregister and cleanup managed processes
                 _snappiumLogger?.LogInfo("Cleaning up managed processes...");
-                await UnregisterManagedDeviceAsync(job, deviceIdentifier, cancellationToken);
+                await UnregisterManagedDeviceAsync(job, deviceIdentifier);
                 if (appiumProcessId != null)
                 {
                     _processManager.UnregisterProcess(appiumProcessId);
@@ -216,11 +215,11 @@ public sealed class JobExecutor : IJobExecutor
         };
     }
 
-    private async Task<string> PrepareDeviceAsync(RunJob job, RootConfig config, CancellationToken cancellationToken)
+    async Task<string> PrepareDeviceAsync(RunJob job, RootConfig config, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Preparing {Platform} device", job.Platform);
 
-        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        if (job is { Platform: Platform.iOS, IosDevice: not null })
         {
             var udidOrName = DeviceHelpers.GetDeviceIdentifier(job.IosDevice.Udid, job.IosDevice.Name);
             
@@ -240,7 +239,8 @@ public sealed class JobExecutor : IJobExecutor
             
             return udidOrName;
         }
-        else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+
+        if (job is { Platform: Platform.Android, AndroidDevice: not null })
         {
             // Android preparation sequence
             var emulatorStartPort = config.Ports?.EmulatorStartPort ?? Defaults.Ports.EmulatorStartPort;
@@ -260,18 +260,18 @@ public sealed class JobExecutor : IJobExecutor
             
             return deviceSerial;
         }
-        
+
         throw new InvalidOperationException($"Unsupported platform: {job.Platform}");
     }
 
-    private async Task InstallAppAsync(
+    async Task InstallAppAsync(
         RunJob job,
         CliOverrides? cliOverrides,
         string deviceIdentifier,
         CancellationToken cancellationToken)
     {
         // Determine app path - use CLI override if provided, otherwise use job app path
-        string? appPath = null;
+        string? appPath;
         
         if (job.Platform == Platform.iOS && !string.IsNullOrEmpty(cliOverrides?.IosAppPath))
         {
@@ -297,7 +297,7 @@ public sealed class JobExecutor : IJobExecutor
         
         _logger.LogInformation("Installing {Platform} app: {Path}", job.Platform, appPath);
         
-        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        if (job is { Platform: Platform.iOS, IosDevice: not null })
         {
             await _iosDeviceManager.InstallAppAsync(deviceIdentifier, appPath, cancellationToken);
         }
@@ -307,7 +307,7 @@ public sealed class JobExecutor : IJobExecutor
         }
     }
 
-    private async Task CaptureFailureArtifactsAsync(
+    async Task CaptureFailureArtifactsAsync(
         AppiumDriver? driver, // Driver can be null if failure occurred before driver creation
         RunJob job,
         string? deviceIdentifier, // Device identifier can be null if failure occurred before device preparation
@@ -352,7 +352,7 @@ public sealed class JobExecutor : IJobExecutor
                 {
                     var screenshotPath = Path.Combine(artifactDir, "failure_screenshot.png");
                     
-                    if (job.Platform == Platform.iOS && job.IosDevice != null)
+                    if (job is { Platform: Platform.iOS, IosDevice: not null })
                     {
                         await _iosDeviceManager.TakeScreenshotAsync(deviceIdentifier, screenshotPath, cancellationToken);
                     }
@@ -386,7 +386,7 @@ public sealed class JobExecutor : IJobExecutor
                     var logsPath = Path.Combine(artifactDir, "device_logs.txt");
                     string deviceLogs;
                     
-                    if (job.Platform == Platform.iOS && job.IosDevice != null)
+                    if (job is { Platform: Platform.iOS, IosDevice: not null })
                     {
                         deviceLogs = await _iosDeviceManager.CaptureLogsAsync(deviceIdentifier, cancellationToken);
                     }
@@ -424,18 +424,18 @@ public sealed class JobExecutor : IJobExecutor
         }
     }
 
-    private async Task CleanupDeviceAsync(RunJob job, string? deviceIdentifier, CancellationToken cancellationToken)
+    async Task CleanupDeviceAsync(RunJob job, string? deviceIdentifier, CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogDebug("Cleaning up {Platform} device", job.Platform);
 
-            if (job.Platform == Platform.iOS && job.IosDevice != null)
+            if (job is { Platform: Platform.iOS, IosDevice: not null })
             {
                 var udidOrName = DeviceHelpers.GetDeviceIdentifier(job.IosDevice.Udid, job.IosDevice.Name);
                 await _iosDeviceManager.ShutdownAsync(udidOrName, cancellationToken);
             }
-            else if (job.Platform == Platform.Android && job.AndroidDevice != null && deviceIdentifier != null)
+            else if (job is { Platform: Platform.Android, AndroidDevice: not null } && deviceIdentifier != null)
             {
                 await _androidDeviceManager.StopEmulatorAsync(deviceIdentifier, cancellationToken);
             }
@@ -446,16 +446,16 @@ public sealed class JobExecutor : IJobExecutor
         }
     }
 
-    private void RegisterManagedDevice(RunJob job, string deviceIdentifier)
+    void RegisterManagedDevice(RunJob job, string deviceIdentifier)
     {
-        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        if (job is { Platform: Platform.iOS, IosDevice: not null })
         {
             var deviceProcessId = $"ios-simulator-{deviceIdentifier}";
             var iosLogger = _serviceProvider.GetRequiredService<ILogger<ManagedIosSimulator>>();
             var managedDevice = new ManagedIosSimulator(_iosDeviceManager, deviceIdentifier, iosLogger);
             _processManager.RegisterProcess(deviceProcessId, managedDevice);
         }
-        else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+        else if (job is { Platform: Platform.Android, AndroidDevice: not null })
         {
             var deviceProcessId = $"android-emulator-{deviceIdentifier}";
             var androidLogger = _serviceProvider.GetRequiredService<ILogger<ManagedAndroidEmulator>>();
@@ -464,16 +464,16 @@ public sealed class JobExecutor : IJobExecutor
         }
     }
 
-    private async Task UnregisterManagedDeviceAsync(RunJob job, string? deviceIdentifier, CancellationToken cancellationToken)
+    async Task UnregisterManagedDeviceAsync(RunJob job, string? deviceIdentifier)
     {
         if (deviceIdentifier == null) return;
 
-        if (job.Platform == Platform.iOS && job.IosDevice != null)
+        if (job is { Platform: Platform.iOS, IosDevice: not null })
         {
             var deviceProcessId = $"ios-simulator-{deviceIdentifier}";
             _processManager.UnregisterProcess(deviceProcessId);
         }
-        else if (job.Platform == Platform.Android && job.AndroidDevice != null)
+        else if (job is { Platform: Platform.Android, AndroidDevice: not null })
         {
             var deviceProcessId = $"android-emulator-{deviceIdentifier}";
             _processManager.UnregisterProcess(deviceProcessId);

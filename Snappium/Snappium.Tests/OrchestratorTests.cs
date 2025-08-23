@@ -1,13 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
-using Snappium.Core.Appium;
 using Snappium.Core.Infrastructure;
 using Snappium.Core.Config;
-using Snappium.Core.DeviceManagement;
-using Snappium.Core.Logging;
 using Snappium.Core.Orchestration;
 using Snappium.Core.Planning;
 
@@ -16,11 +12,11 @@ namespace Snappium.Tests;
 [TestFixture]
 public class OrchestratorTests
 {
-    private IServiceProvider _serviceProvider = null!;
-    private Mock<IJobExecutor> _jobExecutorMock = null!;
-    private Mock<IAppiumServerController> _appiumServerControllerMock = null!;
-    private Mock<ILogger<Orchestrator>> _loggerMock = null!;
-    private Orchestrator _orchestrator = null!;
+    IServiceProvider _serviceProvider = null!;
+    Mock<IJobExecutor> _jobExecutorMock = null!;
+    Mock<IAppiumServerController> _appiumServerControllerMock = null!;
+    Mock<ILogger<Orchestrator>> _loggerMock = null!;
+    Orchestrator _orchestrator = null!;
 
     [SetUp]
     public void SetUp()
@@ -36,7 +32,6 @@ public class OrchestratorTests
 
         _orchestrator = new Orchestrator(
             _serviceProvider,
-            _appiumServerControllerMock.Object,
             _loggerMock.Object);
     }
 
@@ -121,7 +116,7 @@ public class OrchestratorTests
         Assert.That(result.JobResults[0].Screenshots, Has.Count.EqualTo(1));
     }
 
-    private static RootConfig CreateMinimalConfig()
+    static RootConfig CreateMinimalConfig()
     {
         return new RootConfig
         {
@@ -178,7 +173,7 @@ public class OrchestratorTests
         };
     }
 
-    private static RunJob CreateTestJob()
+    static RunJob CreateTestJob()
     {
         return new RunJob
         {

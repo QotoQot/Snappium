@@ -1,15 +1,8 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OpenQA.Selenium.Appium;
 using Snappium.Core.Abstractions;
-using Snappium.Core.Appium;
-using Snappium.Core.Appium;
 using Snappium.Core.Config;
-using Snappium.Core.DeviceManagement;
-using Snappium.Core.Infrastructure;
-using Snappium.Core.Logging;
 using Snappium.Core.Planning;
 
 namespace Snappium.Core.Orchestration;
@@ -19,17 +12,14 @@ namespace Snappium.Core.Orchestration;
 /// </summary>
 public sealed class Orchestrator : IOrchestrator
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IAppiumServerController _appiumServerController;
-    private readonly ILogger<Orchestrator> _logger;
+    readonly IServiceProvider _serviceProvider;
+    readonly ILogger<Orchestrator> _logger;
 
     public Orchestrator(
         IServiceProvider serviceProvider,
-        IAppiumServerController appiumServerController,
         ILogger<Orchestrator> logger)
     {
         _serviceProvider = serviceProvider;
-        _appiumServerController = appiumServerController;
         _logger = logger;
     }
 
@@ -121,13 +111,13 @@ public sealed class Orchestrator : IOrchestrator
     /// Creates a scoped service provider for job execution to ensure complete isolation between parallel jobs.
     /// Each job gets its own dependency injection scope with separate instances of all services.
     /// </summary>
-    private IServiceScope CreateJobScopedServiceProvider()
+    IServiceScope CreateJobScopedServiceProvider()
     {
         return _serviceProvider.CreateScope();
     }
 
 
-    private static EnvironmentInfo GetEnvironmentInfo()
+    static EnvironmentInfo GetEnvironmentInfo()
     {
         return new EnvironmentInfo
         {

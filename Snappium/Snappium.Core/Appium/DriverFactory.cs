@@ -12,9 +12,9 @@ namespace Snappium.Core.Appium;
 /// </summary>
 public sealed class DriverFactory : IDriverFactory
 {
-    private readonly IIosDeviceManager _iosDeviceManager;
-    private readonly IAndroidDeviceManager _androidDeviceManager;
-    private readonly ILogger<DriverFactory> _logger;
+    readonly IIosDeviceManager _iosDeviceManager;
+    readonly IAndroidDeviceManager _androidDeviceManager;
+    readonly ILogger<DriverFactory> _logger;
 
     public DriverFactory(
         IIosDeviceManager iosDeviceManager,
@@ -94,7 +94,7 @@ public sealed class DriverFactory : IDriverFactory
         }
     }
 
-    private AppiumOptions CreateAppiumOptions(RunJob job)
+    AppiumOptions CreateAppiumOptions(RunJob job)
     {
         var options = new AppiumOptions();
         

@@ -8,10 +8,10 @@ namespace Snappium.Cli.Commands;
 
 public class GenerateMatrixCommand : Command
 {
-    private readonly ConfigLoader _configLoader;
-    private readonly RunPlanBuilder _runPlanBuilder;
-    private readonly ILogger<GenerateMatrixCommand> _logger;
-    private readonly FilteringOptions _filteringOptions;
+    readonly ConfigLoader _configLoader;
+    readonly RunPlanBuilder _runPlanBuilder;
+    readonly ILogger<GenerateMatrixCommand> _logger;
+    readonly FilteringOptions _filteringOptions;
 
     public GenerateMatrixCommand(ConfigLoader configLoader, RunPlanBuilder runPlanBuilder, ILogger<GenerateMatrixCommand> logger) : base("generate-matrix", "Generate CI matrix JSON from run plan")
     {
@@ -46,7 +46,7 @@ public class GenerateMatrixCommand : Command
         });
     }
 
-    private async Task<int> ExecuteAsync(
+    async Task<int> ExecuteAsync(
         FileInfo configFile,
         string[]? platforms,
         string[]? devices,
@@ -110,7 +110,7 @@ public class GenerateMatrixCommand : Command
         }
     }
 
-    private static object GenerateGitHubMatrix(RunPlan runPlan)
+    static object GenerateGitHubMatrix(RunPlan runPlan)
     {
         var include = runPlan.Jobs.Select((job, index) => new
         {
@@ -128,7 +128,7 @@ public class GenerateMatrixCommand : Command
         };
     }
 
-    private static object GenerateGitLabMatrix(RunPlan runPlan)
+    static object GenerateGitLabMatrix(RunPlan runPlan)
     {
         var variables = new Dictionary<string, object>();
         
@@ -149,7 +149,7 @@ public class GenerateMatrixCommand : Command
         return variables;
     }
 
-    private static object GenerateAzureMatrix(RunPlan runPlan)
+    static object GenerateAzureMatrix(RunPlan runPlan)
     {
         var strategy = new Dictionary<string, object>();
         

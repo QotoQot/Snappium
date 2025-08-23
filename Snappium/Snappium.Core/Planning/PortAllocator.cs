@@ -8,8 +8,8 @@ namespace Snappium.Core.Planning;
 /// </summary>
 public sealed class PortAllocator
 {
-    private readonly int _basePort;
-    private readonly int _portOffset;
+    readonly int _basePort;
+    readonly int _portOffset;
 
     /// <summary>
     /// Initialize a new port allocator.

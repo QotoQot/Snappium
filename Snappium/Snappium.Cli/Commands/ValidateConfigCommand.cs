@@ -7,8 +7,8 @@ namespace Snappium.Cli.Commands;
 
 public class ValidateConfigCommand : Command
 {
-    private readonly ConfigLoader _configLoader;
-    private readonly ILogger<ValidateConfigCommand> _logger;
+    readonly ConfigLoader _configLoader;
+    readonly ILogger<ValidateConfigCommand> _logger;
 
     public ValidateConfigCommand(ConfigLoader configLoader, ILogger<ValidateConfigCommand> logger) : base("validate-config", "Validate configuration file")
     {
@@ -38,7 +38,7 @@ public class ValidateConfigCommand : Command
         });
     }
 
-    private async Task<int> ExecuteAsync(
+    async Task<int> ExecuteAsync(
         FileInfo configFile,
         FileInfo? schemaFile,
         CancellationToken cancellationToken)
@@ -83,7 +83,7 @@ public class ValidateConfigCommand : Command
             }
 
             // Check locale mappings
-            if (config.LocaleMapping != null && config.Languages != null)
+            if (config is { LocaleMapping: not null, Languages: not null })
             {
                 foreach (var lang in config.Languages)
                 {

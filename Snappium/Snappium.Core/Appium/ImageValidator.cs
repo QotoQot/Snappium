@@ -10,7 +10,7 @@ namespace Snappium.Core.Appium;
 /// </summary>
 public sealed class ImageValidator : IImageValidator
 {
-    private readonly ILogger<ImageValidator> _logger;
+    readonly ILogger<ImageValidator> _logger;
 
     public ImageValidator(ILogger<ImageValidator> logger)
     {

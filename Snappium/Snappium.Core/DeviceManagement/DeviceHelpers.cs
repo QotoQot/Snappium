@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using System.Xml.Linq;
 
 namespace Snappium.Core.DeviceManagement;
 

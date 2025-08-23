@@ -66,10 +66,8 @@ public static class Os
         {
             return ("cmd", ["/c", script]);
         }
-        else
-        {
-            return ("sh", ["-c", script]);
-        }
+
+        return ("sh", ["-c", script]);
     }
 
     /// <summary>
@@ -88,17 +86,15 @@ public static class Os
                 @"C:\Windows\"
             ];
         }
-        else
-        {
-            return
-            [
-                "/usr/local/bin/",
-                "/usr/bin/",
-                "/bin/",
-                "/opt/homebrew/bin/", // Apple Silicon Homebrew
-                "/opt/local/bin/"     // MacPorts
-            ];
-        }
+
+        return
+        [
+            "/usr/local/bin/",
+            "/usr/bin/",
+            "/bin/",
+            "/opt/homebrew/bin/", // Apple Silicon Homebrew
+            "/opt/local/bin/"     // MacPorts
+        ];
     }
 
     /// <summary>

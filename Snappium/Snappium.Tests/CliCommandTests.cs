@@ -14,7 +14,7 @@ namespace Snappium.Tests;
 [TestFixture]
 public class CliCommandTests
 {
-    private IServiceProvider _serviceProvider = null!;
+    IServiceProvider _serviceProvider = null!;
 
     [SetUp]
     public void SetUp()
@@ -30,7 +30,7 @@ public class CliCommandTests
         (_serviceProvider as IDisposable)?.Dispose();
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    static void ConfigureServices(IServiceCollection services)
     {
         // Logging
         services.AddLogging(builder =>

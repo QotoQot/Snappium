@@ -7,16 +7,16 @@ namespace Snappium.Core.Logging;
 /// </summary>
 public sealed class SnappiumConsoleLogger : ISnappiumLogger
 {
-    private readonly ILogger _logger;
-    private readonly bool _verboseMode;
-    private string _jobPrefix = string.Empty;
+    readonly ILogger _logger;
+    readonly bool _verboseMode;
+    string _jobPrefix = string.Empty;
 
-    private const string RESET = "\x1b[0m";
-    private const string BLUE = "\x1b[34m";
-    private const string GREEN = "\x1b[32m";
-    private const string YELLOW = "\x1b[33m";
-    private const string RED = "\x1b[31m";
-    private const string GRAY = "\x1b[90m";
+    const string RESET = "\x1b[0m";
+    const string BLUE = "\x1b[34m";
+    const string GREEN = "\x1b[32m";
+    const string YELLOW = "\x1b[33m";
+    const string RED = "\x1b[31m";
+    const string GRAY = "\x1b[90m";
 
     public SnappiumConsoleLogger(ILogger logger, bool verboseMode = false)
     {
@@ -98,32 +98,32 @@ public sealed class SnappiumConsoleLogger : ISnappiumLogger
         return new JobScope(this, jobId);
     }
 
-    private string FormatMessage(string message, params object[] args)
+    string FormatMessage(string message, params object[] args)
     {
         var formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
         return string.IsNullOrEmpty(_jobPrefix) ? formattedMessage : $"[{_jobPrefix}] {formattedMessage}";
     }
 
-    private static void WriteColoredLine(string color, string level, string message)
+    static void WriteColoredLine(string color, string level, string message)
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
         Console.WriteLine($"{GRAY}[{timestamp}]{RESET} {color}[{level}]{RESET} {message}");
     }
 
-    private void SetJobPrefix(string prefix)
+    void SetJobPrefix(string prefix)
     {
         _jobPrefix = prefix;
     }
 
-    private void ClearJobPrefix()
+    void ClearJobPrefix()
     {
         _jobPrefix = string.Empty;
     }
 
-    private sealed class JobScope : IDisposable
+    sealed class JobScope : IDisposable
     {
-        private readonly SnappiumConsoleLogger _logger;
-        private readonly string _originalPrefix;
+        readonly SnappiumConsoleLogger _logger;
+        readonly string _originalPrefix;
 
         public JobScope(SnappiumConsoleLogger logger, string jobId)
         {

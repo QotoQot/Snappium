@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -13,15 +12,15 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class AppiumServerController : IAppiumServerController
 {
-    private readonly ICommandRunner _commandRunner;
-    private readonly ILogger<AppiumServerController> _logger;
-    private readonly HttpClient _httpClient;
-    private readonly ConcurrentDictionary<int, AppiumServerInstance> _runningServers;
+    readonly ICommandRunner _commandRunner;
+    readonly ILogger<AppiumServerController> _logger;
+    readonly HttpClient _httpClient;
+    readonly ConcurrentDictionary<int, AppiumServerInstance> _runningServers;
 
     /// <summary>
     /// Represents a managed Appium server instance.
     /// </summary>
-    private sealed record AppiumServerInstance
+    sealed record AppiumServerInstance
     {
         public required Process Process { get; init; }
         public required int Port { get; init; }
@@ -58,12 +57,10 @@ public sealed class AppiumServerController : IAppiumServerController
                         ProcessId = existingServer.Process.Id
                     };
                 }
-                else
-                {
-                    // Clean up dead process entry
-                    _runningServers.TryRemove(port, out _);
-                    existingServer.Process.Dispose();
-                }
+
+                // Clean up dead process entry
+                _runningServers.TryRemove(port, out _);
+                existingServer.Process.Dispose();
             }
 
             // Check if port is already in use by external process
@@ -85,11 +82,9 @@ public sealed class AppiumServerController : IAppiumServerController
                         ProcessId = null // External process, we don't manage it
                     };
                 }
-                else
-                {
-                    _logger.LogWarning("Existing Appium server on port {Port} is not responding properly", port);
-                    // Fall through to start a new server
-                }
+
+                _logger.LogWarning("Existing Appium server on port {Port} is not responding properly", port);
+                // Fall through to start a new server
             }
 
             // Start Appium server
@@ -144,33 +139,31 @@ public sealed class AppiumServerController : IAppiumServerController
                     ProcessId = process.Id
                 };
             }
-            else
-            {
-                _logger.LogError("Appium server failed to become ready within timeout on port {Port}", port);
-                
-                // Clean up failed process
-                try
-                {
-                    if (!process.HasExited)
-                    {
-                        process.Kill();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error killing failed Appium process {ProcessId}", process.Id);
-                }
-                finally
-                {
-                    process.Dispose();
-                }
 
-                return new AppiumServerResult
+            _logger.LogError("Appium server failed to become ready within timeout on port {Port}", port);
+                
+            // Clean up failed process
+            try
+            {
+                if (!process.HasExited)
                 {
-                    Success = false,
-                    ErrorMessage = "Appium server failed to become ready within timeout"
-                };
+                    process.Kill();
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error killing failed Appium process {ProcessId}", process.Id);
+            }
+            finally
+            {
+                process.Dispose();
+            }
+
+            return new AppiumServerResult
+            {
+                Success = false,
+                ErrorMessage = "Appium server failed to become ready within timeout"
+            };
         }
         catch (Exception ex)
         {
@@ -251,7 +244,7 @@ public sealed class AppiumServerController : IAppiumServerController
     /// <summary>
     /// Gracefully stops a managed Appium server instance.
     /// </summary>
-    private async Task<bool> StopManagedServerAsync(AppiumServerInstance serverInstance, CancellationToken cancellationToken)
+    async Task<bool> StopManagedServerAsync(AppiumServerInstance serverInstance, CancellationToken cancellationToken)
     {
         try
         {
@@ -296,11 +289,9 @@ public sealed class AppiumServerController : IAppiumServerController
                 _logger.LogDebug("Appium server {ProcessId} force killed successfully", process.Id);
                 return true;
             }
-            else
-            {
-                _logger.LogError("Failed to kill Appium server {ProcessId} within timeout", process.Id);
-                return false;
-            }
+
+            _logger.LogError("Failed to kill Appium server {ProcessId} within timeout", process.Id);
+            return false;
         }
         catch (Exception ex)
         {
@@ -326,10 +317,8 @@ public sealed class AppiumServerController : IAppiumServerController
             {
                 return await KillProcessOnPortWindowsAsync(port, cancellationToken);
             }
-            else
-            {
-                return await KillProcessOnPortUnixAsync(port, cancellationToken);
-            }
+
+            return await KillProcessOnPortUnixAsync(port, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -338,7 +327,7 @@ public sealed class AppiumServerController : IAppiumServerController
         }
     }
 
-    private async Task<bool> WaitForServerReadyAsync(string serverUrl, TimeSpan timeout, CancellationToken cancellationToken)
+    async Task<bool> WaitForServerReadyAsync(string serverUrl, TimeSpan timeout, CancellationToken cancellationToken)
     {
         var endTime = DateTime.UtcNow.Add(timeout);
         var attemptCount = 0;
@@ -366,7 +355,8 @@ public sealed class AppiumServerController : IAppiumServerController
                             return true;
                         }
                         // Fallback: if no ready flag, assume ready if we got a valid response
-                        else if (!value.TryGetProperty("ready", out _))
+
+                        if (!value.TryGetProperty("ready", out _))
                         {
                             _logger.LogDebug("Appium server responded successfully after {Attempts} attempts (no ready flag)", attemptCount);
                             return true;
@@ -391,7 +381,7 @@ public sealed class AppiumServerController : IAppiumServerController
         return false;
     }
 
-    private async Task<bool> KillProcessOnPortWindowsAsync(int port, CancellationToken cancellationToken)
+    async Task<bool> KillProcessOnPortWindowsAsync(int port, CancellationToken cancellationToken)
     {
         try
         {
@@ -435,7 +425,7 @@ public sealed class AppiumServerController : IAppiumServerController
         }
     }
 
-    private async Task<bool> KillProcessOnPortUnixAsync(int port, CancellationToken cancellationToken)
+    async Task<bool> KillProcessOnPortUnixAsync(int port, CancellationToken cancellationToken)
     {
         try
         {

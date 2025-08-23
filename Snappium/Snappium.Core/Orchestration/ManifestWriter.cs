@@ -10,8 +10,9 @@ namespace Snappium.Core.Orchestration;
 /// </summary>
 public sealed class ManifestWriter : IManifestWriter
 {
-    private readonly ILogger<ManifestWriter> _logger;
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    readonly ILogger<ManifestWriter> _logger;
+
+    static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -54,7 +55,7 @@ public sealed class ManifestWriter : IManifestWriter
         };
     }
 
-    private static object CreateManifest(RunResult runResult)
+    static object CreateManifest(RunResult runResult)
     {
         return new
         {
@@ -117,7 +118,7 @@ public sealed class ManifestWriter : IManifestWriter
         };
     }
 
-    private static string CreateSummary(RunResult runResult)
+    static string CreateSummary(RunResult runResult)
     {
         var summary = new StringBuilder();
         

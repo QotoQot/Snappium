@@ -9,8 +9,8 @@ namespace Snappium.Core.Config;
 /// </summary>
 public sealed class ConfigLoader
 {
-    private readonly ILogger<ConfigLoader> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
+    readonly ILogger<ConfigLoader> _logger;
+    readonly JsonSerializerOptions _jsonOptions;
 
     public ConfigLoader(ILogger<ConfigLoader> logger)
     {
@@ -68,7 +68,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate JSON against schema.
     /// </summary>
-    private async Task ValidateSchemaAsync(string configJson, string schemaPath, CancellationToken cancellationToken)
+    async Task ValidateSchemaAsync(string configJson, string schemaPath, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Validating configuration against schema {SchemaPath}", schemaPath);
 
@@ -95,7 +95,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Perform semantic validation on the configuration.
     /// </summary>
-    private async Task ValidateSemanticAsync(RootConfig config, CancellationToken cancellationToken)
+    async Task ValidateSemanticAsync(RootConfig config, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Performing semantic validation");
 
@@ -131,7 +131,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate that all languages have locale mappings for both platforms.
     /// </summary>
-    private Task ValidateLocaleMappingsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidateLocaleMappingsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         var missingLocales = config.Languages
             .Where(lang => !config.LocaleMapping.ContainsKey(lang))
@@ -160,7 +160,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate that device folders are unique across platforms.
     /// </summary>
-    private Task ValidateDeviceFoldersAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidateDeviceFoldersAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         var allFolders = config.Devices.Ios.Select(d => d.Folder)
             .Concat(config.Devices.Android.Select(d => d.Folder))
@@ -183,7 +183,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate screenshot action configurations.
     /// </summary>
-    private Task ValidateScreenshotActionsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidateScreenshotActionsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         foreach (var screenshot in config.Screenshots)
         {
@@ -200,7 +200,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate device configurations for potential issues.
     /// </summary>
-    private Task ValidateDeviceConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidateDeviceConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         // Validate iOS device names don't contain problematic characters
         foreach (var device in config.Devices.Ios)
@@ -242,7 +242,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate selector configurations to ensure they use supported strategies.
     /// </summary>
-    private Task ValidateSelectorConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidateSelectorConfigurationsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         foreach (var screenshot in config.Screenshots)
         {
@@ -278,7 +278,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate individual selector to ensure it has at least one supported strategy.
     /// </summary>
-    private static void ValidateSelector(Selector selector, string context, List<string> errors)
+    static void ValidateSelector(Selector selector, string context, List<string> errors)
     {
         var hasValidStrategy = !string.IsNullOrEmpty(selector.AccessibilityId) ||
                               !string.IsNullOrEmpty(selector.Id) ||
@@ -305,7 +305,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Validate platform version formats.
     /// </summary>
-    private Task ValidatePlatformVersionsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
+    Task ValidatePlatformVersionsAsync(RootConfig config, List<string> errors, CancellationToken cancellationToken)
     {
         // Validate iOS platform versions (should be like "18.5", "17.0", etc.)
         foreach (var device in config.Devices.Ios)
@@ -336,7 +336,7 @@ public sealed class ConfigLoader
     /// <summary>
     /// Convert DTO to domain model.
     /// </summary>
-    private static RootConfig ConvertFromDto(RootConfigDto dto)
+    static RootConfig ConvertFromDto(RootConfigDto dto)
     {
         return new RootConfig
         {
@@ -449,7 +449,7 @@ public sealed class ConfigLoader
         };
     }
 
-    private static ScreenshotPlan ConvertScreenshotFromDto(ScreenshotPlanDto dto)
+    static ScreenshotPlan ConvertScreenshotFromDto(ScreenshotPlanDto dto)
     {
         return new ScreenshotPlan
         {
@@ -465,7 +465,7 @@ public sealed class ConfigLoader
     }
 
 
-    private static Selector ConvertSelectorFromDto(SelectorDto dto)
+    static Selector ConvertSelectorFromDto(SelectorDto dto)
     {
         return new Selector
         {
@@ -479,7 +479,7 @@ public sealed class ConfigLoader
 }
 
 // DTOs for JSON deserialization
-internal sealed class RootConfigDto
+sealed class RootConfigDto
 {
     public required DevicesDto Devices { get; set; }
     public required List<string> Languages { get; set; }
@@ -495,13 +495,13 @@ internal sealed class RootConfigDto
     public DismissorsDto? Dismissors { get; set; }
 }
 
-internal sealed class DevicesDto
+sealed class DevicesDto
 {
     public required List<IosDeviceDto> Ios { get; set; }
     public required List<AndroidDeviceDto> Android { get; set; }
 }
 
-internal sealed class IosDeviceDto
+sealed class IosDeviceDto
 {
     public required string Name { get; set; }
     public string? Udid { get; set; }
@@ -509,7 +509,7 @@ internal sealed class IosDeviceDto
     public required string PlatformVersion { get; set; }
 }
 
-internal sealed class AndroidDeviceDto
+sealed class AndroidDeviceDto
 {
     public required string Name { get; set; }
     public required string Avd { get; set; }
@@ -517,13 +517,13 @@ internal sealed class AndroidDeviceDto
     public required string PlatformVersion { get; set; }
 }
 
-internal sealed class LocaleMappingDto
+sealed class LocaleMappingDto
 {
     public required string Ios { get; set; }
     public required string Android { get; set; }
 }
 
-internal sealed class ScreenshotPlanDto
+sealed class ScreenshotPlanDto
 {
     public required string Name { get; set; }
     public string? Orientation { get; set; }
@@ -531,7 +531,7 @@ internal sealed class ScreenshotPlanDto
     public Dictionary<string, SelectorDto>? Assert { get; set; }
 }
 
-internal sealed class SelectorDto
+sealed class SelectorDto
 {
     public string? AccessibilityId { get; set; }
     public string? ClassChain { get; set; }
@@ -540,22 +540,20 @@ internal sealed class SelectorDto
     public string? Id { get; set; }
 }
 
-
-internal sealed class TimeoutsDto
+sealed class TimeoutsDto
 {
     public int? DefaultWaitMs { get; set; }
     public int? ImplicitWaitMs { get; set; }
     public int? PageLoadTimeoutMs { get; set; }
 }
 
-internal sealed class PortsDto
+sealed class PortsDto
 {
     public int? BasePort { get; set; }
     public int? PortOffset { get; set; }
 }
 
-
-internal sealed class FailureArtifactsDto
+sealed class FailureArtifactsDto
 {
     public bool? SavePageSource { get; set; }
     public bool? SaveScreenshot { get; set; }
@@ -564,13 +562,13 @@ internal sealed class FailureArtifactsDto
     public string? ArtifactsDir { get; set; }
 }
 
-internal sealed class StatusBarDto
+sealed class StatusBarDto
 {
     public IosStatusBarDto? Ios { get; set; }
     public AndroidStatusBarDto? Android { get; set; }
 }
 
-internal sealed class IosStatusBarDto
+sealed class IosStatusBarDto
 {
     public string? Time { get; set; }
     public int? WifiBars { get; set; }
@@ -578,7 +576,7 @@ internal sealed class IosStatusBarDto
     public string? BatteryState { get; set; }
 }
 
-internal sealed class AndroidStatusBarDto
+sealed class AndroidStatusBarDto
 {
     public bool? DemoMode { get; set; }
     public string? Clock { get; set; }
@@ -587,49 +585,49 @@ internal sealed class AndroidStatusBarDto
     public string? Notifications { get; set; }
 }
 
-internal sealed class ValidationDto
+sealed class ValidationDto
 {
     public bool? EnforceImageSize { get; set; }
     public ExpectedSizesDto? ExpectedSizes { get; set; }
 }
 
-internal sealed class ExpectedSizesDto
+sealed class ExpectedSizesDto
 {
     public Dictionary<string, DeviceSizeDto>? Ios { get; set; }
     public Dictionary<string, DeviceSizeDto>? Android { get; set; }
 }
 
-internal sealed class DeviceSizeDto
+sealed class DeviceSizeDto
 {
     public int[]? Portrait { get; set; }
     public int[]? Landscape { get; set; }
 }
 
-internal sealed class CapabilitiesDto
+sealed class CapabilitiesDto
 {
     public Dictionary<string, object>? Ios { get; set; }
     public Dictionary<string, object>? Android { get; set; }
 }
 
-internal sealed class DismissorsDto
+sealed class DismissorsDto
 {
     public List<SelectorDto>? Ios { get; set; }
     public List<SelectorDto>? Android { get; set; }
 }
 
-internal sealed class ArtifactsDto
+sealed class ArtifactsDto
 {
     public required IosArtifactDto Ios { get; set; }
     public required AndroidArtifactDto Android { get; set; }
 }
 
-internal sealed class IosArtifactDto
+sealed class IosArtifactDto
 {
     public required string ArtifactGlob { get; set; }
     public required string Package { get; set; }
 }
 
-internal sealed class AndroidArtifactDto
+sealed class AndroidArtifactDto
 {
     public required string ArtifactGlob { get; set; }
     public required string Package { get; set; }

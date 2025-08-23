@@ -3,16 +3,15 @@ using Moq;
 using Snappium.Core.Abstractions;
 using Snappium.Core.Config;
 using Snappium.Core.Orchestration;
-using Snappium.Core.Planning;
 
 namespace Snappium.Tests;
 
 [TestFixture]
 public class ManifestWriterTests
 {
-    private Mock<ILogger<ManifestWriter>> _loggerMock = null!;
-    private ManifestWriter _manifestWriter = null!;
-    private string _tempDirectory = null!;
+    Mock<ILogger<ManifestWriter>> _loggerMock = null!;
+    ManifestWriter _manifestWriter = null!;
+    string _tempDirectory = null!;
 
     [SetUp]
     public void SetUp()
@@ -86,7 +85,7 @@ public class ManifestWriterTests
         Assert.That(summaryContent, Does.Contain("Job Results:"));
     }
 
-    private static RunResult CreateTestRunResult()
+    static RunResult CreateTestRunResult()
     {
         var startTime = DateTimeOffset.UtcNow.AddMinutes(-5);
         var endTime = DateTimeOffset.UtcNow;

@@ -1,18 +1,16 @@
 using Microsoft.Extensions.Logging;
 using Snappium.Core.Config;
 using Snappium.Core.DeviceManagement;
-using Snappium.Core.Infrastructure;
 using Snappium.Tests.TestHelpers;
-using System.Text.Json;
 
 namespace Snappium.Tests;
 
 [TestFixture]
 public class IosDeviceManagerTests
 {
-    private IosDeviceManager _deviceManager = null!;
-    private MockCommandRunner _commandRunner = null!;
-    private ILogger<IosDeviceManager> _logger = null!;
+    IosDeviceManager _deviceManager = null!;
+    MockCommandRunner _commandRunner = null!;
+    ILogger<IosDeviceManager> _logger = null!;
 
     [SetUp]
     public void SetUp()

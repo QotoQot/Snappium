@@ -6,8 +6,8 @@ namespace Snappium.Tests;
 [TestFixture]
 public class CommandRunnerTests
 {
-    private CommandRunner _commandRunner = null!;
-    private ILogger<CommandRunner> _logger = null!;
+    CommandRunner _commandRunner = null!;
+    ILogger<CommandRunner> _logger = null!;
 
     [SetUp]
     public void SetUp()

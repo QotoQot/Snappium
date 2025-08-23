@@ -1,7 +1,6 @@
 using CliWrap;
 using CliWrap.Buffered;
 using Microsoft.Extensions.Logging;
-using Polly;
 using Snappium.Core.Logging;
 using System.Diagnostics;
 
@@ -12,10 +11,10 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class CommandRunner : ICommandRunner
 {
-    private readonly ILogger<CommandRunner> _logger;
-    private readonly ISnappiumLogger? _snappiumLogger;
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(1);
+    readonly ILogger<CommandRunner> _logger;
+    readonly ISnappiumLogger? _snappiumLogger;
+    static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(5);
+    static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(1);
 
     public CommandRunner(ILogger<CommandRunner> logger, ISnappiumLogger? snappiumLogger = null)
     {

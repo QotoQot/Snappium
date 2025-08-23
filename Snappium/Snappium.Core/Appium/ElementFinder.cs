@@ -3,7 +3,6 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Appium;
 using OpenQA.Selenium.Support.UI;
 using Snappium.Core.Config;
-using SeleniumExtras.WaitHelpers;
 
 namespace Snappium.Core.Appium;
 
@@ -12,8 +11,8 @@ namespace Snappium.Core.Appium;
 /// </summary>
 public sealed class ElementFinder : IElementFinder
 {
-    private readonly ILogger<ElementFinder> _logger;
-    private static readonly TimeSpan DefaultTimeout = Defaults.Timeouts.ElementOperation;
+    readonly ILogger<ElementFinder> _logger;
+    static readonly TimeSpan DefaultTimeout = Defaults.Timeouts.ElementOperation;
 
     public ElementFinder(ILogger<ElementFinder> logger)
     {
@@ -126,7 +125,7 @@ public sealed class ElementFinder : IElementFinder
         throw new ArgumentException("Selector must have at least one valid locator strategy defined");
     }
 
-    private static string GetSelectorType(Selector selector)
+    static string GetSelectorType(Selector selector)
     {
         if (!string.IsNullOrEmpty(selector.AccessibilityId)) return "AccessibilityId";
         if (!string.IsNullOrEmpty(selector.Id)) return "Id";
@@ -136,7 +135,7 @@ public sealed class ElementFinder : IElementFinder
         return "Unknown";
     }
 
-    private static string GetSelectorValue(Selector selector)
+    static string GetSelectorValue(Selector selector)
     {
         if (!string.IsNullOrEmpty(selector.AccessibilityId)) return selector.AccessibilityId;
         if (!string.IsNullOrEmpty(selector.Id)) return selector.Id;
@@ -146,7 +145,7 @@ public sealed class ElementFinder : IElementFinder
         return "N/A";
     }
 
-    private static string GetSelectorDescription(Selector selector)
+    static string GetSelectorDescription(Selector selector)
     {
         var type = GetSelectorType(selector);
         var value = GetSelectorValue(selector);

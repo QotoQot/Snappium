@@ -18,12 +18,12 @@ class Program
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
-        
-        using var serviceProvider = services.BuildServiceProvider();
+
+        await using var serviceProvider = services.BuildServiceProvider();
         
         // Setup graceful shutdown handler to prevent zombie processes
         var processManager = serviceProvider.GetRequiredService<ProcessManager>();
-        Console.CancelKeyPress += (sender, eventArgs) =>
+        Console.CancelKeyPress += (_, eventArgs) =>
         {
             Console.WriteLine("\nCancellation requested. Shutting down managed processes...");
             try
@@ -59,7 +59,7 @@ class Program
         return await rootCommand.InvokeAsync(args);
     }
 
-    private static void ConfigureServices(IServiceCollection services)
+    static void ConfigureServices(IServiceCollection services)
     {
         // Logging
         services.AddLogging(builder =>
@@ -95,21 +95,18 @@ class Program
         
         // Planning and orchestration
         services.AddSingleton<RunPlanBuilder>();
-        services.AddScoped<IJobExecutor>(provider => 
-        {
-            return new JobExecutor(
-                provider.GetRequiredService<IDriverFactory>(),
-                provider.GetRequiredService<IActionExecutor>(),
-                provider.GetRequiredService<IImageValidator>(),
-                provider.GetRequiredService<IIosDeviceManager>(),
-                provider.GetRequiredService<IAndroidDeviceManager>(),
-                provider.GetRequiredService<IAppiumServerController>(),
-                provider.GetRequiredService<ProcessManager>(),
-                provider, // Pass the service provider itself
-                provider.GetRequiredService<ILogger<JobExecutor>>(),
-                provider.GetService<ISnappiumLogger>()
-            );
-        }); // Scoped to enable parallel job isolation
+        services.AddScoped<IJobExecutor>(provider => new JobExecutor(
+            provider.GetRequiredService<IDriverFactory>(),
+            provider.GetRequiredService<IActionExecutor>(),
+            provider.GetRequiredService<IImageValidator>(),
+            provider.GetRequiredService<IIosDeviceManager>(),
+            provider.GetRequiredService<IAndroidDeviceManager>(),
+            provider.GetRequiredService<IAppiumServerController>(),
+            provider.GetRequiredService<ProcessManager>(),
+            provider, // Pass the service provider itself
+            provider.GetRequiredService<ILogger<JobExecutor>>(),
+            provider.GetService<ISnappiumLogger>()
+        )); // Scoped to enable parallel job isolation
         services.AddSingleton<IOrchestrator, Orchestrator>();
         services.AddSingleton<IManifestWriter, ManifestWriter>();
         

@@ -10,11 +10,11 @@ namespace Snappium.Core.DeviceManagement;
 /// </summary>
 public sealed class AppiumSettingsHelper
 {
-    private const string AppiumSettingsPackage = "io.appium.settings";
-    private const string ApkResourceName = "Snappium.Core.Resources.Android.settings_apk-debug.apk";
-    
-    private readonly ICommandRunner _commandRunner;
-    private readonly ILogger<AppiumSettingsHelper> _logger;
+    const string AppiumSettingsPackage = "io.appium.settings";
+    const string ApkResourceName = "Snappium.Core.Resources.Android.settings_apk-debug.apk";
+
+    readonly ICommandRunner _commandRunner;
+    readonly ILogger<AppiumSettingsHelper> _logger;
 
     public AppiumSettingsHelper(ICommandRunner commandRunner, ILogger<AppiumSettingsHelper> logger)
     {
@@ -68,7 +68,7 @@ public sealed class AppiumSettingsHelper
     /// <summary>
     /// Checks if Appium Settings app is installed on the device.
     /// </summary>
-    private async Task<bool> IsAppInstalledAsync(string deviceSerial, CancellationToken cancellationToken)
+    async Task<bool> IsAppInstalledAsync(string deviceSerial, CancellationToken cancellationToken)
     {
         var result = await _commandRunner.RunAsync(
             "adb",
@@ -82,7 +82,7 @@ public sealed class AppiumSettingsHelper
     /// <summary>
     /// Installs the Appium Settings APK from embedded resources.
     /// </summary>
-    private async Task InstallAppAsync(string deviceSerial, CancellationToken cancellationToken)
+    async Task InstallAppAsync(string deviceSerial, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Installing Appium Settings app on device {Serial}", deviceSerial);
 
@@ -121,7 +121,7 @@ public sealed class AppiumSettingsHelper
     /// <summary>
     /// Grants necessary permissions to Appium Settings app.
     /// </summary>
-    private async Task GrantPermissionsAsync(string deviceSerial, CancellationToken cancellationToken)
+    async Task GrantPermissionsAsync(string deviceSerial, CancellationToken cancellationToken)
     {
         var permissions = new[]
         {
@@ -168,7 +168,7 @@ public sealed class AppiumSettingsHelper
     /// <summary>
     /// Extracts the embedded APK resource to a temporary file.
     /// </summary>
-    private async Task<string> ExtractApkToTempFileAsync(CancellationToken cancellationToken)
+    async Task<string> ExtractApkToTempFileAsync(CancellationToken cancellationToken)
     {
         var assembly = Assembly.GetExecutingAssembly();
         var tempPath = Path.GetTempFileName();

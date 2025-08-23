@@ -13,10 +13,10 @@ namespace Snappium.Core.Appium;
 /// </summary>
 public sealed class ActionExecutor : IActionExecutor
 {
-    private readonly IElementFinder _elementFinder;
-    private readonly IIosDeviceManager _iosDeviceManager;
-    private readonly IAndroidDeviceManager _androidDeviceManager;
-    private readonly ILogger<ActionExecutor> _logger;
+    readonly IElementFinder _elementFinder;
+    readonly IIosDeviceManager _iosDeviceManager;
+    readonly IAndroidDeviceManager _androidDeviceManager;
+    readonly ILogger<ActionExecutor> _logger;
 
     public ActionExecutor(
         IElementFinder elementFinder,
@@ -176,7 +176,7 @@ public sealed class ActionExecutor : IActionExecutor
         }
     }
 
-    private async Task<ScreenshotResult?> ExecuteActionAsync(
+    async Task<ScreenshotResult?> ExecuteActionAsync(
         AppiumDriver driver,
         RunJob job,
         string deviceIdentifier,
@@ -252,7 +252,7 @@ public sealed class ActionExecutor : IActionExecutor
         return null;
     }
 
-    private async Task SetOrientationAsync(AppiumDriver driver, string orientation, CancellationToken cancellationToken)
+    async Task SetOrientationAsync(AppiumDriver driver, string orientation, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Setting orientation to: {Orientation}", orientation);
 
@@ -279,7 +279,7 @@ public sealed class ActionExecutor : IActionExecutor
         }
     }
 
-    private static string GetActionType(ScreenshotAction action)
+    static string GetActionType(ScreenshotAction action)
     {
         if (action.Tap != null) return "Tap";
         if (action.Wait != null) return "Wait";

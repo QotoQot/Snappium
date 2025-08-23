@@ -9,8 +9,8 @@ namespace Snappium.Core.Infrastructure;
 /// </summary>
 public sealed class DependencyChecker : IDependencyChecker
 {
-    private readonly ICommandRunner _commandRunner;
-    private readonly ILogger<DependencyChecker> _logger;
+    readonly ICommandRunner _commandRunner;
+    readonly ILogger<DependencyChecker> _logger;
 
     public DependencyChecker(ICommandRunner commandRunner, ILogger<DependencyChecker> logger)
     {
@@ -40,7 +40,7 @@ public sealed class DependencyChecker : IDependencyChecker
         var allRequiredAvailable = requiredDependencies.All(d => d.IsAvailable);
         
         var warnings = new List<string>();
-        foreach (var dep in dependencies.Where(d => !d.IsRequired && !d.IsAvailable))
+        foreach (var dep in dependencies.Where(d => d is { IsRequired: false, IsAvailable: false }))
         {
             warnings.Add($"Optional dependency '{dep.Name}' not found: {dep.ErrorMessage}");
         }
@@ -94,7 +94,7 @@ public sealed class DependencyChecker : IDependencyChecker
         return await CheckCommandAsync("appium", ["--version"], "appium", isRequired: false, cancellationToken);
     }
 
-    private async Task<DependencyResult> CheckCommandAsync(
+    async Task<DependencyResult> CheckCommandAsync(
         string command,
         string[] args,
         string displayName,
@@ -123,19 +123,17 @@ public sealed class DependencyChecker : IDependencyChecker
                     Path = command // Could be enhanced to find actual path
                 };
             }
-            else
-            {
-                var error = $"Command failed with exit code {result.ExitCode}: {result.StandardError}";
-                _logger.LogWarning("{Command} check failed: {Error}", displayName, error);
+
+            var error = $"Command failed with exit code {result.ExitCode}: {result.StandardError}";
+            _logger.LogWarning("{Command} check failed: {Error}", displayName, error);
                 
-                return new DependencyResult
-                {
-                    Name = displayName,
-                    IsAvailable = false,
-                    IsRequired = isRequired,
-                    ErrorMessage = error
-                };
-            }
+            return new DependencyResult
+            {
+                Name = displayName,
+                IsAvailable = false,
+                IsRequired = isRequired,
+                ErrorMessage = error
+            };
         }
         catch (Exception ex)
         {

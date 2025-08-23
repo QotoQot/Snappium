@@ -10,7 +10,7 @@ namespace Snappium.Core.Planning;
 /// </summary>
 public sealed class RunPlanBuilder
 {
-    private readonly ILogger<RunPlanBuilder> _logger;
+    readonly ILogger<RunPlanBuilder> _logger;
 
     public RunPlanBuilder(ILogger<RunPlanBuilder> logger)
     {
@@ -48,7 +48,7 @@ public sealed class RunPlanBuilder
         portAllocator ??= new PortAllocator(config.Ports?.BasePort ?? Defaults.Ports.AppiumBasePort, config.Ports?.PortOffset ?? Defaults.Ports.PortOffset);
 
         var jobs = new List<RunJob>();
-        var artifactPaths = await ResolveArtifactPathsAsync(config, cancellationToken);
+        var artifactPaths = await ResolveArtifactPathsAsync(config);
 
         // Filter platforms
         var platforms = GetFilteredPlatforms(platformFilter);
@@ -106,7 +106,7 @@ public sealed class RunPlanBuilder
         return plan;
     }
 
-    private static Platform[] GetFilteredPlatforms(string[]? platformFilter)
+    static Platform[] GetFilteredPlatforms(string[]? platformFilter)
     {
         if (platformFilter == null || platformFilter.Length == 0)
         {
@@ -120,7 +120,7 @@ public sealed class RunPlanBuilder
             .ToArray();
     }
 
-    private static string[] GetFilteredLanguages(RootConfig config, string[]? languageFilter)
+    static string[] GetFilteredLanguages(RootConfig config, string[]? languageFilter)
     {
         var availableLanguages = config.Languages;
 
@@ -134,7 +134,7 @@ public sealed class RunPlanBuilder
             .ToArray();
     }
 
-    private static List<ScreenshotPlan> GetFilteredScreenshots(RootConfig config, string[]? screenshotFilter)
+    static List<ScreenshotPlan> GetFilteredScreenshots(RootConfig config, string[]? screenshotFilter)
     {
         if (screenshotFilter == null || screenshotFilter.Length == 0)
         {
@@ -146,17 +146,17 @@ public sealed class RunPlanBuilder
             .ToList();
     }
 
-    private static object[] GetFilteredDevices(RootConfig config, Platform platform, string[]? deviceFilter)
+    static object[] GetFilteredDevices(RootConfig config, Platform platform, string[]? deviceFilter)
     {
         return platform switch
         {
-            Platform.iOS => FilterDevices(config.Devices.Ios.Cast<object>(), deviceFilter, d => ((IosDevice)d).Name),
-            Platform.Android => FilterDevices(config.Devices.Android.Cast<object>(), deviceFilter, d => ((AndroidDevice)d).Name),
+            Platform.iOS => FilterDevices(config.Devices.Ios, deviceFilter, d => ((IosDevice)d).Name),
+            Platform.Android => FilterDevices(config.Devices.Android, deviceFilter, d => ((AndroidDevice)d).Name),
             _ => throw new ArgumentOutOfRangeException(nameof(platform))
         };
     }
 
-    private static object[] FilterDevices(IEnumerable<object> devices, string[]? deviceFilter, Func<object, string> nameSelector)
+    static object[] FilterDevices(IEnumerable<object> devices, string[]? deviceFilter, Func<object, string> nameSelector)
     {
         if (deviceFilter == null || deviceFilter.Length == 0)
         {
@@ -168,17 +168,17 @@ public sealed class RunPlanBuilder
             .ToArray();
     }
 
-    private async Task<Dictionary<Platform, string>> ResolveArtifactPathsAsync(RootConfig config, CancellationToken cancellationToken)
+    async Task<Dictionary<Platform, string>> ResolveArtifactPathsAsync(RootConfig config)
     {
         var paths = new Dictionary<Platform, string>();
 
-        var iosPath = await ResolveGlobPatternAsync(config.Artifacts.Ios.ArtifactGlob, cancellationToken);
+        var iosPath = await ResolveGlobPatternAsync(config.Artifacts.Ios.ArtifactGlob);
         if (!string.IsNullOrEmpty(iosPath))
         {
             paths[Platform.iOS] = iosPath;
         }
 
-        var androidPath = await ResolveGlobPatternAsync(config.Artifacts.Android.ArtifactGlob, cancellationToken);
+        var androidPath = await ResolveGlobPatternAsync(config.Artifacts.Android.ArtifactGlob);
         if (!string.IsNullOrEmpty(androidPath))
         {
             paths[Platform.Android] = androidPath;
@@ -187,7 +187,7 @@ public sealed class RunPlanBuilder
         return paths;
     }
 
-    private static async Task<string?> ResolveGlobPatternAsync(string globPattern, CancellationToken cancellationToken)
+    static async Task<string?> ResolveGlobPatternAsync(string globPattern)
     {
         // Simple glob resolution - in a real implementation, you'd use a proper glob library
         var directory = Path.GetDirectoryName(globPattern) ?? ".";
@@ -229,7 +229,7 @@ public sealed class RunPlanBuilder
             : null;
     }
 
-    private async Task<RunJob?> CreateJobAsync(
+    async Task<RunJob?> CreateJobAsync(
         RootConfig config,
         Platform platform,
         object device,
@@ -275,9 +275,9 @@ public sealed class RunPlanBuilder
         };
     }
 
-    private static double EstimateDuration(List<RunJob> jobs)
+    static double EstimateDuration(List<RunJob> jobs)
     {
-        // Rough estimation: 2 minutes per job
+        // Estimation: 2 minutes per job
         return jobs.Count * 2.0;
     }
 }
